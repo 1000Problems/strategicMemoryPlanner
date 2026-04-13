@@ -3,6 +3,7 @@ use rusqlite::Connection;
 use std::path::Path;
 
 const MIGRATION_001: &str = include_str!("migrations/001_initial.sql");
+const MIGRATION_002: &str = include_str!("migrations/002_project_path.sql");
 
 /// Open (or create) the SQLite database for a project and run migrations.
 pub fn open_db(path: &Path) -> Result<Connection> {
@@ -42,6 +43,18 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             .context("Failed to run migration 001")?;
         conn.execute("INSERT INTO _migrations (id) VALUES (1)", [])?;
         tracing::info!("Applied migration 001_initial");
+    }
+
+    let applied_002: bool = conn
+        .prepare("SELECT COUNT(*) FROM _migrations WHERE id = 2")?
+        .query_row([], |row| row.get::<_, i64>(0))
+        .map(|count| count > 0)?;
+
+    if !applied_002 {
+        conn.execute_batch(MIGRATION_002)
+            .context("Failed to run migration 002")?;
+        conn.execute("INSERT INTO _migrations (id) VALUES (2)", [])?;
+        tracing::info!("Applied migration 002_project_path");
     }
 
     Ok(())

@@ -1552,6 +1552,7 @@ dependencies = [
  "chrono",
  "futures",
  "llama-cpp-2",
+ "regex",
  "reqwest",
  "rusqlite",
  "serde",

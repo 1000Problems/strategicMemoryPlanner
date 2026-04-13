@@ -16,6 +16,8 @@ pub struct ServerConfig {
     pub data_dir: PathBuf,
     #[serde(default = "default_true")]
     pub debug: bool,
+    #[serde(default = "default_sessions_dir")]
+    pub sessions_dir: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -78,6 +80,7 @@ fn default_context_size() -> u32 { 8192 }
 fn default_max_tool_result_tokens() -> usize { 500 }
 fn default_true() -> bool { true }
 fn default_phase_confidence() -> f64 { 0.8 }
+fn default_sessions_dir() -> PathBuf { PathBuf::from("~/.claude/projects") }
 
 fn expand_tilde(path: &Path) -> PathBuf {
     let path_str = path.to_string_lossy();
@@ -103,6 +106,9 @@ impl Config {
         if let Some(ref mut embedded) = config.secretary.embedded {
             embedded.model_path = expand_tilde(&embedded.model_path);
         }
+
+        // Expand tilde in sessions_dir
+        config.server.sessions_dir = expand_tilde(&config.server.sessions_dir);
 
         Ok(config)
     }

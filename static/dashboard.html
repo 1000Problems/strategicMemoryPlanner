@@ -49,6 +49,43 @@
   --glow-amber: 0 0 20px rgba(212, 168, 67, 0.15);
 }
 
+html.light {
+  --bg-deep: #f0f1f4;
+  --bg-surface: #f8f9fb;
+  --bg-raised: #ffffff;
+  --bg-hover: #eceef2;
+  --border: #d8dae0;
+  --border-active: #b0b4be;
+  --text-primary: #1a1c22;
+  --text-secondary: #555a68;
+  --text-dim: #9097a8;
+  --text-ghost: #c8ccd6;
+
+  --phase-exploring: #b8860b;
+  --phase-design: #1f8f9a;
+  --phase-ready: #16a34a;
+  --phase-blocked: #dc2626;
+  --phase-review: #7c3aed;
+  --phase-done: #6b7280;
+
+  --event-decision: #1f8f9a;
+  --event-phase: #b8860b;
+  --event-ingestion: #16a34a;
+  --event-error: #dc2626;
+
+  --glow-cyan: 0 0 20px rgba(31, 143, 154, 0.12);
+  --glow-amber: 0 0 20px rgba(184, 134, 11, 0.12);
+}
+
+/* theme toggle button */
+.btn-theme {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+  font-size: 14px;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
@@ -220,6 +257,10 @@ html, body {
   overflow-y: auto;
 }
 
+.project-entry {
+  margin-bottom: 2px;
+}
+
 .project-item {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
@@ -227,7 +268,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: all 0.1s;
+  transition: background 0.1s;
 }
 
 .project-item:hover { background: var(--bg-hover); }
@@ -243,6 +284,11 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .project-phase-dot {
@@ -255,6 +301,63 @@ html, body {
 .project-meta {
   font-size: 10px;
   color: var(--text-dim);
+}
+
+.project-caret {
+  font-size: 8px;
+  color: var(--text-ghost);
+  transition: transform 0.2s ease, color 0.15s;
+  padding: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.project-caret:hover { color: var(--text-secondary); }
+.project-caret.open { transform: rotate(90deg); color: var(--text-secondary); }
+
+.project-actions {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease, opacity 0.15s;
+  opacity: 0;
+}
+
+.project-actions.open {
+  max-height: 120px;
+  opacity: 1;
+}
+
+.project-actions-inner {
+  padding: 4px 10px 8px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.project-action-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  transition: background 0.1s, color 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.project-action-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.1);
+  color: var(--event-error);
 }
 
 .new-project-input {
@@ -1000,6 +1103,814 @@ html, body {
   }
   .inspector { display: none; }
 }
+
+/* ─── SESSIONS TAB ─── */
+.sessions-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sessions-sidebar {
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sessions-sidebar-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sessions-project-selector {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sessions-project-selector select {
+  width: 100%;
+  padding: 5px 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+
+.sessions-project-selector select:focus {
+  border-color: var(--phase-design);
+}
+
+.sessions-file-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.session-file-item {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.1s;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+}
+
+.session-file-item:hover { background: var(--bg-hover); }
+
+.session-file-item.active {
+  background: var(--bg-raised);
+  border-color: var(--border-active);
+}
+
+.session-file-id {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-file-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.session-card-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.session-card-tokens {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+
+.session-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--phase-ready);
+  flex-shrink: 0;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Stats grid in detail panel */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.stat-mini {
+  text-align: center;
+  padding: 6px 4px;
+  background: var(--bg-deep);
+  border-radius: var(--radius-sm);
+}
+
+.stat-mini-value {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-mini-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+/* Suggestions */
+.suggestions-bar {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.suggestion-chip {
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(232, 138, 58, 0.12);
+  color: #e88a3a;
+  font-family: var(--font-mono);
+}
+
+/* Collapsible detail sections */
+.detail-section {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.detail-section-header {
+  padding: 6px 16px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-section-header:hover { color: var(--text-secondary); }
+
+.detail-section-body {
+  padding: 4px 16px 10px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  display: none;
+}
+
+.detail-section-body.open { display: block; }
+
+.tools-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tool-chip {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.files-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.file-chip {
+  font-size: 9px;
+  padding: 2px 6px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* Context meter */
+.ctx-meter {
+  height: 4px;
+  background: var(--bg-deep);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.ctx-meter-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+/* Billing bar styling */
+.billing-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.billing-value {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.billing-label {
+  color: var(--text-dim);
+}
+
+.billing-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+}
+
+/* ─── CONVERSATION VIEWER ─── */
+.conversation-viewer {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+.conversation-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+
+.conversation-session-id {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.conversation-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.conversation-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── MESSAGE BUBBLES ─── */
+.msg-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.msg-role-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+}
+
+.msg-role-label.user { color: var(--phase-design); }
+.msg-role-label.assistant { color: var(--phase-exploring); }
+
+.msg-usage-badge {
+  font-size: 9px;
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  margin-left: auto;
+  align-self: flex-end;
+}
+
+/* Individual content blocks */
+.block {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* User text */
+.block-text-user {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Assistant text */
+.block-text-assistant {
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Thinking block */
+.block-thinking {
+  border: 1px solid var(--border);
+  background: var(--bg-deep);
+}
+
+.block-thinking-header {
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: color 0.1s;
+}
+
+.block-thinking-header:hover { color: var(--text-secondary); }
+
+.block-thinking-toggle {
+  font-size: 8px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.block-thinking-toggle.open { transform: rotate(90deg); }
+
+.block-thinking-body {
+  display: none;
+  padding: 8px 12px 12px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  border-top: 1px solid var(--border);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.block-thinking-body.open { display: block; }
+
+/* Tool use block */
+.block-tool-use {
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.block-tool-header {
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.block-tool-header:hover { background: var(--bg-hover); }
+
+.tool-name-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(61, 184, 196, 0.12);
+  color: var(--phase-design);
+  font-family: var(--font-mono);
+}
+
+.tool-input-preview {
+  font-size: 10px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.block-tool-body {
+  display: none;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.block-tool-body.open { display: block; }
+
+.tool-input-json {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-deep);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* Tool result block */
+.block-tool-result {
+  border: 1px dashed var(--border);
+  background: var(--bg-deep);
+}
+
+.block-tool-result-header {
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--text-ghost);
+}
+
+.block-tool-result-header:hover { color: var(--text-dim); }
+
+.tool-result-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tool-result-preview {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-tool-result-body {
+  display: none;
+  padding: 6px 12px 10px;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  border-top: 1px dashed var(--border);
+}
+
+.block-tool-result-body.open { display: block; }
+
+/* ─── CONTEXT TAB ─── */
+.context-view {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Hero cost display */
+.context-hero {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  text-align: center;
+}
+
+.context-hero-cost {
+  font-family: var(--font-sans);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+
+.context-hero-cost.green { color: var(--phase-ready); }
+.context-hero-cost.yellow { color: var(--phase-exploring); }
+.context-hero-cost.orange { color: #e88a3a; }
+.context-hero-cost.red { color: var(--event-error); }
+
+.context-hero-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.context-bar-track {
+  height: 8px;
+  background: var(--bg-deep);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.context-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.context-bar-fill.green { background: var(--phase-ready); }
+.context-bar-fill.yellow { background: var(--phase-exploring); }
+.context-bar-fill.orange { background: #e88a3a; }
+.context-bar-fill.red { background: var(--event-error); }
+
+.context-bar-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* Receipt */
+.context-receipt {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.receipt-section {
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-section:last-child { border-bottom: none; }
+
+.receipt-section-header {
+  padding: 10px 16px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: var(--bg-raised);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.receipt-section-total {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.receipt-row {
+  padding: 8px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--bg-deep);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+
+.receipt-row:last-child { border-bottom: none; }
+.receipt-row:hover { background: var(--bg-hover); }
+
+.receipt-row.expanded { background: var(--bg-raised); }
+
+.receipt-path {
+  font-size: 11px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.receipt-scope-badge {
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.receipt-scope-badge.global { background: rgba(167, 139, 250, 0.15); color: var(--phase-review); }
+.receipt-scope-badge.portfolio { background: rgba(61, 184, 196, 0.12); color: var(--phase-design); }
+.receipt-scope-badge.project { background: rgba(74, 222, 128, 0.12); color: var(--phase-ready); }
+.receipt-scope-badge.user { background: rgba(212, 168, 67, 0.12); color: var(--phase-exploring); }
+.receipt-scope-badge.parent { background: rgba(107, 114, 128, 0.15); color: var(--phase-done); }
+
+.receipt-bar {
+  width: 60px;
+  height: 4px;
+  background: var(--bg-deep);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.receipt-bar-inner {
+  height: 100%;
+  background: var(--phase-design);
+  border-radius: 2px;
+  min-width: 2px;
+}
+
+.receipt-tokens {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  text-align: right;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+/* Ref rows (indented under chain entries) */
+.receipt-ref-row {
+  padding: 5px 16px 5px 40px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--bg-deep);
+  font-size: 10px;
+  transition: background 0.1s;
+  cursor: pointer;
+}
+
+.receipt-ref-row:hover { background: var(--bg-hover); }
+
+.receipt-ref-path {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ref-type-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ref-type-dot.always { background: var(--phase-ready); }
+.ref-type-dot.conditional { background: var(--phase-exploring); border: 1px dashed var(--phase-exploring); background: transparent; }
+.ref-type-dot.external { background: #e88a3a; }
+
+.receipt-condition {
+  font-size: 9px;
+  color: var(--text-ghost);
+  font-style: italic;
+  padding-left: 40px;
+  padding-bottom: 4px;
+}
+
+.ref-missing {
+  color: var(--event-error);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* Expandable file content */
+.receipt-expand {
+  display: none;
+  padding: 8px 16px 12px;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-expand.open { display: block; }
+
+.receipt-expand-content {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+}
+
+/* Summary footer */
+.context-summary {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.summary-stat {
+  text-align: center;
+}
+
+.summary-stat-value {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-stat-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* What-if toggles */
+.receipt-toggle {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border-active);
+  background: var(--bg-deep);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  color: var(--phase-ready);
+  flex-shrink: 0;
+  transition: all 0.1s;
+}
+
+.receipt-toggle.checked {
+  background: var(--phase-design);
+  border-color: var(--phase-design);
+  color: var(--bg-deep);
+}
+
+.receipt-toggle:hover {
+  border-color: var(--phase-design);
+}
 </style>
 </head>
 <body>
@@ -1021,15 +1932,18 @@ html, body {
       <div class="status-item">
         <span id="backend-name">—</span>
       </div>
+      <button class="btn btn-theme" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">◐</button>
       <button class="btn" onclick="showIngestModal()">ingest</button>
-      <button class="btn btn-primary" onclick="showNewProjectModal()">+ project</button>
     </div>
   </header>
 
   <!-- ═══ SIDEBAR ═══ -->
   <aside class="sidebar">
     <div class="sidebar-section">
-      <div class="sidebar-label">Projects</div>
+      <div class="sidebar-label" style="display:flex;align-items:center;justify-content:space-between">
+        Projects
+        <button class="btn btn-primary" onclick="showNewProjectModal()" style="padding:3px 8px;font-size:10px">+ add</button>
+      </div>
       <div class="project-list" id="project-list">
         <div class="empty-state" id="no-projects" style="padding:20px 10px">
           <div class="empty-state-desc">No projects yet</div>
@@ -1037,7 +1951,7 @@ html, body {
       </div>
     </div>
     <div class="sidebar-section" id="sessions-section" style="display:none">
-      <div class="sidebar-label">Active Sessions</div>
+      <div class="sidebar-label">Ingestion History</div>
       <div class="session-list" id="session-list"></div>
     </div>
   </aside>
@@ -1045,14 +1959,27 @@ html, body {
   <!-- ═══ MAIN AREA ═══ -->
   <main class="main">
     <div class="main-tabs">
-      <button class="main-tab active" data-tab="pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
+      <button class="main-tab active" data-tab="context" onclick="switchMainTab('context')">Context</button>
+      <button class="main-tab" data-tab="sessions" onclick="switchMainTab('sessions')">Sessions</button>
+      <button class="main-tab" data-tab="pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
       <button class="main-tab" data-tab="decisions" onclick="switchMainTab('decisions')">Decisions</button>
       <button class="main-tab" data-tab="hot" onclick="switchMainTab('hot')">Hot Memory</button>
       <button class="main-tab" data-tab="brain" onclick="switchMainTab('brain')">Brain</button>
     </div>
 
+    <!-- Context tab (default) -->
+    <div class="main-content" id="tab-context">
+      <div class="context-view" id="context-view">
+        <div class="empty-state">
+          <div class="empty-state-icon">&#9678;</div>
+          <div class="empty-state-title">No project selected</div>
+          <div class="empty-state-desc">Select a project with a path set to see its context load</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Pipeline tab -->
-    <div class="main-content" id="tab-pipeline">
+    <div class="main-content" id="tab-pipeline" style="display:none">
       <div class="pipeline">
         <div class="pipeline-stages">
           <div class="pipeline-stage" id="stage-idle">IDLE</div>
@@ -1100,6 +2027,48 @@ html, body {
               <div class="empty-state-icon">&#9671;</div>
               <div class="empty-state-title">No events yet</div>
               <div class="empty-state-desc">Events will stream here when you ingest a session log</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sessions tab -->
+    <div class="main-content" id="tab-sessions" style="display:none;padding:0;height:100%;overflow:hidden">
+      <div style="display:flex;flex-direction:column;height:100%">
+        <!-- Billing bar -->
+        <div id="billing-bar" style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-surface);display:flex;align-items:center;gap:16px;flex-shrink:0;font-size:10px">
+          <span style="color:var(--text-dim)">Loading billing...</span>
+        </div>
+
+        <div class="sessions-layout" style="flex:1;overflow:hidden">
+          <!-- Left: session cards -->
+          <div class="sessions-sidebar">
+            <div class="sessions-sidebar-header">
+              <span>Sessions</span>
+              <span id="sessions-count" style="font-weight:400;color:var(--text-ghost)"></span>
+            </div>
+            <div class="sessions-file-list" id="sessions-file-list">
+              <div class="empty-state" style="padding:20px 10px">
+                <div class="empty-state-desc">Select a project to see sessions</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: session detail -->
+          <div class="conversation-viewer">
+            <div class="conversation-header">
+              <div class="conversation-session-id" id="conv-session-id">no session selected</div>
+              <div class="conversation-stats" id="conv-stats"></div>
+            </div>
+            <!-- Stats + suggestions panel -->
+            <div id="session-detail-panel" style="display:none;flex-shrink:0"></div>
+            <div class="conversation-messages" id="conversation-messages">
+              <div class="empty-state">
+                <div class="empty-state-icon">&#9671;</div>
+                <div class="empty-state-title">No session loaded</div>
+                <div class="empty-state-desc">Pick a session from the list</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1186,8 +2155,13 @@ html, body {
 <div class="modal-overlay" id="new-project-modal">
   <div class="modal">
     <h3>New Project</h3>
+    <label>Project Folder</label>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input type="text" id="new-project-path" placeholder="/path/to/project" style="margin-bottom:0;flex:1" readonly>
+      <button class="btn btn-primary" onclick="pickFolder()" style="flex-shrink:0">Browse...</button>
+    </div>
     <label>Project Name</label>
-    <input type="text" id="new-project-name" placeholder="my-project" autofocus
+    <input type="text" id="new-project-name" placeholder="auto-detected from folder"
       onkeydown="if(event.key==='Enter') createProject()">
     <div class="modal-actions">
       <button class="btn" onclick="hideModals()">Cancel</button>
@@ -1201,7 +2175,7 @@ html, body {
   <div class="modal">
     <h3>Ingest Session Log</h3>
     <label>Project</label>
-    <input type="text" id="ingest-project" placeholder="project name" readonly>
+    <input type="text" id="ingest-project" placeholder="project name">
     <label>Source Path</label>
     <input type="text" id="ingest-source" placeholder="/path/to/session.jsonl"
       onkeydown="if(event.key==='Enter') runIngest()">
@@ -1280,14 +2254,31 @@ function renderProjects(projects) {
   list.innerHTML = projects.map(p => {
     const phase = p.current_phase || 'unknown';
     const phaseColor = getPhaseColor(phase);
+    const safeName = escapeHtml(p.name);
     return `
-      <div class="project-item ${currentProject === p.name ? 'active' : ''}"
-           onclick="selectProject('${p.name}')">
-        <div class="project-name">
-          <div class="project-phase-dot" style="background:${phaseColor}"></div>
-          ${p.name}
+      <div class="project-entry">
+        <div class="project-item ${currentProject === p.name ? 'active' : ''}"
+             onclick="selectProject('${safeName}')">
+          <div class="project-name">
+            <div class="project-phase-dot" style="background:${phaseColor}"></div>
+            ${safeName}
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <div class="project-meta">${phase}</div>
+            <span class="project-caret" id="caret-${safeName}"
+              onclick="event.stopPropagation();toggleProjectActions('${safeName}')">&#9654;</span>
+          </div>
         </div>
-        <div class="project-meta">${phase}</div>
+        <div class="project-actions" id="actions-${safeName}">
+          <div class="project-actions-inner">
+            <button class="project-action-btn" onclick="archiveProject('${safeName}')">
+              <span style="font-size:11px">&#9744;</span> Archive
+            </button>
+            <button class="project-action-btn danger" onclick="deleteProject('${safeName}')">
+              <span style="font-size:11px">&#10005;</span> Delete
+            </button>
+          </div>
+        </div>
       </div>
     `;
   }).join('');
@@ -1298,6 +2289,41 @@ function selectProject(name) {
   loadProjects();
   loadProjectData();
   connectSSE(name);
+  // Reload whichever tab is active
+  const activeTab = document.querySelector('.main-tab.active');
+  if (activeTab) {
+    const tab = activeTab.dataset.tab;
+    if (tab === 'context') loadContext();
+    if (tab === 'sessions') loadSessionsTab();
+  }
+}
+
+function toggleProjectActions(name) {
+  const caret = document.getElementById(`caret-${name}`);
+  const panel = document.getElementById(`actions-${name}`);
+  if (!caret || !panel) return;
+  const isOpen = panel.classList.toggle('open');
+  caret.classList.toggle('open', isOpen);
+}
+
+async function deleteProject(name) {
+  if (!confirm(`Delete project "${name}"?\nThis removes all SMP data (decisions, history). Session logs are not affected.`)) return;
+  try {
+    await fetch(`${API}/projects/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  } catch {}
+  if (currentProject === name) currentProject = null;
+  loadProjects();
+}
+
+async function archiveProject(name) {
+  if (!confirm(`Archive project "${name}"?\nThe project will be hidden from the sidebar but data is preserved.`)) return;
+  // For now, archive = delete from SMP view (data dir removed, session logs preserved)
+  // TODO: Add proper archive status column instead of deleting
+  try {
+    await fetch(`${API}/projects/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  } catch {}
+  if (currentProject === name) currentProject = null;
+  loadProjects();
 }
 
 async function loadProjectData() {
@@ -1305,6 +2331,39 @@ async function loadProjectData() {
   loadDecisions();
   loadHotMemory();
   loadBrain();
+  loadIngestionHistory();
+}
+
+async function loadIngestionHistory() {
+  if (!currentProject) return;
+  const section = document.getElementById('sessions-section');
+  const list = document.getElementById('session-list');
+
+  try {
+    const r = await fetch(`${API}/debug/query?project=${encodeURIComponent(currentProject)}&sql=${encodeURIComponent(
+      `SELECT job_id, status, started_at, completed_at, raw_tokens, digest_tokens FROM ingestion_log WHERE project = '${currentProject}' ORDER BY rowid DESC LIMIT 10`
+    )}`);
+    if (!r.ok) { section.style.display = 'none'; return; }
+    const data = await r.json();
+    if (!data.rows || data.rows.length === 0) { section.style.display = 'none'; return; }
+
+    section.style.display = '';
+    list.innerHTML = data.rows.map(row => {
+      const isComplete = row.status === 'complete';
+      const time = row.completed_at || row.started_at || '';
+      const shortTime = time ? new Date(time).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '—';
+      const shortId = String(row.job_id || '').substring(0, 8);
+      return `
+        <div class="session-item">
+          <div class="session-status ${isComplete ? 'complete' : 'active'}"></div>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(String(row.job_id || ''))}">${shortId}</span>
+          <span style="color:var(--text-dim);font-size:10px">${shortTime}</span>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    section.style.display = 'none';
+  }
 }
 
 // ─── SSE ───
@@ -1514,8 +2573,13 @@ async function runQuery() {
 
   const results = document.getElementById('sql-results');
 
+  if (!currentProject) {
+    results.innerHTML = `<div style="color:var(--event-error);font-size:11px;padding:8px">Select a project first</div>`;
+    return;
+  }
+
   try {
-    const r = await fetch(`${API}/debug/query?sql=${encodeURIComponent(sql)}`);
+    const r = await fetch(`${API}/debug/query?project=${encodeURIComponent(currentProject)}&sql=${encodeURIComponent(sql)}`);
     if (!r.ok) {
       const err = await r.text();
       results.innerHTML = `<div style="color:var(--event-error);font-size:11px;padding:8px">${escapeHtml(err)}</div>`;
@@ -1636,35 +2700,57 @@ function activateStage(id) {
 // ─── NEW PROJECT ───
 function showNewProjectModal() {
   document.getElementById('new-project-name').value = '';
+  document.getElementById('new-project-path').value = '';
   document.getElementById('new-project-modal').classList.add('show');
-  setTimeout(() => document.getElementById('new-project-name').focus(), 100);
 }
 
 async function createProject() {
   const name = document.getElementById('new-project-name').value.trim();
+  const path = document.getElementById('new-project-path').value.trim();
   if (!name) return;
 
+  const body = { name };
+  if (path) body.path = path;
+
   try {
-    await fetch(`${API}/projects`, {
+    const r = await fetch(`${API}/projects`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
+      body: JSON.stringify(body)
     });
-  } catch {}
+    if (!r.ok) {
+      const err = await r.text();
+      alert(`Failed to create project: ${err}`);
+      return;
+    }
+  } catch(e) {
+    alert(`Failed to create project: ${e.message}`);
+    return;
+  }
 
   hideModals();
   currentProject = name;
-  loadProjects();
+  await loadProjects();
   connectSSE(name);
+  if (path) {
+    switchMainTab('context');
+  }
 }
 
 // ─── UI HELPERS ───
 function switchMainTab(tab) {
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`.main-tab[data-tab="${tab}"]`).classList.add('active');
-  ['pipeline', 'decisions', 'hot', 'brain'].forEach(t => {
-    document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
+  ['context', 'pipeline', 'sessions', 'decisions', 'hot', 'brain'].forEach(t => {
+    const el = document.getElementById(`tab-${t}`);
+    if (t === 'sessions') {
+      el.style.display = t === tab ? 'block' : 'none';
+    } else {
+      el.style.display = t === tab ? '' : 'none';
+    }
   });
+  if (tab === 'sessions') loadSessionsTab();
+  if (tab === 'context') loadContext();
 }
 
 function switchInspectorTab(tab) {
@@ -1743,7 +2829,594 @@ function markdownToHtml(md) {
     .replace(/`(.+?)`/g, '<code style="background:var(--bg-deep);padding:1px 4px;border-radius:3px;font-size:11px">$1</code>');
 }
 
+// ─── FOLDER PICKER ───
+async function pickFolder() {
+  const pathInput = document.getElementById('new-project-path');
+  const nameInput = document.getElementById('new-project-name');
+  pathInput.value = 'Opening folder picker...';
+
+  try {
+    const r = await fetch(`${API}/pick-folder`, { method: 'POST' });
+    const data = await r.json();
+    if (data.cancelled || !data.path) {
+      pathInput.value = '';
+      return;
+    }
+    pathInput.value = data.path;
+    // Auto-detect project name from folder
+    const parts = data.path.split('/');
+    const autoName = parts[parts.length - 1] || parts[parts.length - 2] || '';
+    nameInput.value = autoName;
+    // Auto-create the project immediately
+    createProject();
+  } catch(e) {
+    pathInput.value = '';
+    console.error('Folder picker failed', e);
+  }
+}
+
+// ─── CONTEXT TAB ───
+let _contextBlockId = 0;
+
+async function loadContext() {
+  if (!currentProject) {
+    document.getElementById('context-view').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">&#9678;</div>
+        <div class="empty-state-title">No project selected</div>
+        <div class="empty-state-desc">Select a project with a path set to see its context load</div>
+      </div>`;
+    return;
+  }
+
+  const view = document.getElementById('context-view');
+  view.innerHTML = '<div style="padding:20px;font-size:10px;color:var(--text-dim)">Loading context trace...</div>';
+
+  try {
+    const r = await fetch(`${API}/projects/${encodeURIComponent(currentProject)}/context`);
+    if (!r.ok) {
+      const err = await r.text();
+      view.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">&#9678;</div>
+          <div class="empty-state-title">No path set</div>
+          <div class="empty-state-desc">${escapeHtml(err)}<br>Edit the project and set a folder path to enable context tracing.</div>
+        </div>`;
+      return;
+    }
+    const ctx = await r.json();
+    renderContext(ctx);
+  } catch(e) {
+    view.innerHTML = `<div style="padding:20px;color:var(--event-error);font-size:11px">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderContext(ctx) {
+  const view = document.getElementById('context-view');
+  _contextBlockId = 0;
+
+  const s = ctx.summary;
+  const colorClass = s.context_window_pct < 10 ? 'green'
+    : s.context_window_pct < 25 ? 'yellow'
+    : s.context_window_pct < 50 ? 'orange' : 'red';
+
+  const remaining = 200000 - s.total_worst_case;
+
+  // Find max tokens for proportional bars
+  const allTokens = [];
+  ctx.chain.forEach(entry => {
+    allTokens.push(entry.token_count);
+    entry.references.forEach(r => { if (r.token_count) allTokens.push(r.token_count); });
+  });
+  const maxTokens = Math.max(...allTokens, 1);
+
+  // Build receipt sections
+  const chainHtml = ctx.chain.filter(e => e.exists).map(entry => {
+    const id = ++_contextBlockId;
+    const barPct = (entry.token_count / maxTokens * 100).toFixed(0);
+
+    const refsHtml = entry.references.map(ref => {
+      const refId = ++_contextBlockId;
+      const refBarPct = ref.token_count ? (ref.token_count / maxTokens * 100).toFixed(0) : 0;
+      const dotClass = ref.ref_type;
+      const missing = ref.exists === false;
+      const tokenStr = ref.token_count ? ref.token_count.toLocaleString() : (ref.ref_type === 'external' ? '?' : '—');
+
+      return `
+        <div class="receipt-ref-row" onclick="toggleReceiptExpand('ctx-expand-${refId}')">
+          <div class="receipt-ref-path">
+            <div class="ref-type-dot ${dotClass}"></div>
+            ${missing ? '<span class="ref-missing">MISSING</span>' : ''}
+            ${escapeHtml(ref.path)}
+          </div>
+          <div class="receipt-bar"><div class="receipt-bar-inner" style="width:${refBarPct}%"></div></div>
+          <div class="receipt-tokens">${tokenStr}</div>
+        </div>
+        ${ref.condition ? `<div class="receipt-condition">${escapeHtml(ref.condition)}</div>` : ''}
+        ${ref.note ? `<div class="receipt-condition">${escapeHtml(ref.note)}</div>` : ''}
+      `;
+    }).join('');
+
+    return `
+      <div class="receipt-row" onclick="toggleReceiptExpand('ctx-expand-${id}')">
+        <div class="receipt-path">
+          <span class="receipt-scope-badge ${entry.scope}">${entry.scope}</span>
+          ${escapeHtml(entry.path)}
+        </div>
+        <div class="receipt-bar"><div class="receipt-bar-inner" style="width:${barPct}%"></div></div>
+        <div class="receipt-tokens">${entry.token_count.toLocaleString()}</div>
+      </div>
+      <div class="receipt-expand" id="ctx-expand-${id}">
+        <div class="receipt-expand-content" id="ctx-content-${id}">Loading...</div>
+      </div>
+      ${refsHtml}
+    `;
+  }).join('');
+
+  // External services section
+  const externals = ctx.chain.flatMap(e => e.references).filter(r => r.ref_type === 'external');
+  const externalsHtml = externals.length ? externals.map(ref => `
+    <div class="receipt-ref-row" style="cursor:default">
+      <div class="receipt-ref-path">
+        <div class="ref-type-dot external"></div>
+        ${escapeHtml(ref.path)}
+      </div>
+      <div class="receipt-bar"></div>
+      <div class="receipt-tokens" style="color:var(--text-ghost)">?</div>
+    </div>
+    ${ref.note ? `<div class="receipt-condition">${escapeHtml(ref.note)}</div>` : ''}
+  `).join('') : '<div style="padding:8px 16px;font-size:10px;color:var(--text-ghost)">None detected</div>';
+
+  view.innerHTML = `
+    <div class="context-hero">
+      <div class="context-hero-cost ${colorClass}">${s.total_worst_case.toLocaleString()} tokens</div>
+      <div class="context-hero-label">consumed before you type a word</div>
+      <div class="context-bar-track">
+        <div class="context-bar-fill ${colorClass}" style="width:${Math.min(s.context_window_pct, 100).toFixed(1)}%"></div>
+      </div>
+      <div class="context-bar-legend">
+        <span>${s.context_window_pct.toFixed(1)}% of 200k context window</span>
+        <span>${remaining.toLocaleString()} tokens remaining</span>
+      </div>
+    </div>
+
+    <div class="context-receipt">
+      <div class="receipt-section">
+        <div class="receipt-section-header">
+          <span>CLAUDE.MD Chain (always loaded)</span>
+          <span class="receipt-section-total">${s.always_tokens.toLocaleString()} tk</span>
+        </div>
+        ${chainHtml}
+      </div>
+
+      <div class="receipt-section">
+        <div class="receipt-section-header">
+          <span>External Services (unknown cost)</span>
+          <span class="receipt-section-total">${s.external_services} service${s.external_services !== 1 ? 's' : ''}</span>
+        </div>
+        ${externalsHtml}
+      </div>
+    </div>
+
+    <div class="context-summary">
+      <div class="summary-stat">
+        <div class="summary-stat-value">${s.always_tokens.toLocaleString()}</div>
+        <div class="summary-stat-label">Always Loaded</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-value">${s.conditional_tokens.toLocaleString()}</div>
+        <div class="summary-stat-label">Conditional</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-value">${s.external_services}</div>
+        <div class="summary-stat-label">External</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-value">${s.files_missing}</div>
+        <div class="summary-stat-label">Missing Files</div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleReceiptExpand(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const isOpen = el.classList.toggle('open');
+  if (isOpen && el.querySelector('.receipt-expand-content')?.textContent === 'Loading...') {
+    // Fetch the file content
+    loadFileContent(el, id);
+  }
+}
+
+async function loadFileContent(el, id) {
+  const contentEl = el.querySelector('.receipt-expand-content');
+  if (!contentEl) return;
+
+  // Get the path from the preceding row
+  const prevRow = el.previousElementSibling;
+  if (!prevRow) return;
+  const pathEl = prevRow.querySelector('.receipt-path, .receipt-ref-path');
+  if (!pathEl) return;
+
+  let path = pathEl.textContent.trim();
+  // Remove scope badge text
+  const badge = pathEl.querySelector('.receipt-scope-badge');
+  if (badge) path = path.replace(badge.textContent, '').trim();
+  // Remove MISSING text
+  const missingEl = pathEl.querySelector('.ref-missing');
+  if (missingEl) path = path.replace(missingEl.textContent, '').trim();
+
+  try {
+    const r = await fetch(`${API}/read-file?path=${encodeURIComponent(path)}`);
+    if (!r.ok) {
+      contentEl.textContent = `Cannot read: ${path}`;
+      return;
+    }
+    const data = await r.json();
+    if (!data.exists) {
+      contentEl.textContent = `File not found: ${path}`;
+    } else {
+      contentEl.textContent = data.content;
+    }
+  } catch(e) {
+    contentEl.textContent = `Error: ${e.message}`;
+  }
+}
+
+// ─── SESSIONS ───
+let sessionsSlugCache = null;
+let currentSessionSlug = null;
+
+async function loadSessionsTab() {
+  loadBilling();
+  await loadSessionsSlugs();
+  autoSelectSessionsProject();
+}
+
+async function loadBilling() {
+  const bar = document.getElementById('billing-bar');
+  try {
+    const r = await fetch(`${API}/billing`);
+    if (!r.ok) { bar.innerHTML = '<span style="color:var(--text-dim)">Billing unavailable</span>'; return; }
+    const b = await r.json();
+    const fmtK = n => n >= 1000000 ? (n/1000000).toFixed(1) + 'M' : n >= 1000 ? (n/1000).toFixed(0) + 'k' : n.toString();
+    bar.innerHTML = `
+      <div class="billing-stat">
+        <span class="billing-label">Today</span>
+        <span class="billing-value">${fmtK(b.today.output_tokens)}</span>
+        <span class="billing-label">out</span>
+      </div>
+      <div class="billing-sep"></div>
+      <div class="billing-stat">
+        <span class="billing-label">Since ${b.billing_cycle.start}</span>
+        <span class="billing-value">${fmtK(b.billing_cycle.output_tokens)}</span>
+        <span class="billing-label">out &mdash; ${b.billing_cycle.sessions} sessions</span>
+      </div>
+    `;
+  } catch { bar.innerHTML = ''; }
+}
+
+async function loadSessionsSlugs() {
+  try {
+    const r = await fetch(`${API}/sessions`);
+    if (!r.ok) return;
+    sessionsSlugCache = await r.json();
+  } catch {}
+}
+
+function autoSelectSessionsProject() {
+  if (!currentProject || !sessionsSlugCache) return;
+  const match = sessionsSlugCache.find(p =>
+    p.slug.includes(currentProject) || currentProject.includes(p.slug.split('-').pop())
+  );
+  if (match) {
+    currentSessionSlug = match.slug;
+    loadSessionsList();
+  }
+}
+
+async function loadSessionsList() {
+  const slug = currentSessionSlug;
+  const list = document.getElementById('sessions-file-list');
+  const countEl = document.getElementById('sessions-count');
+
+  if (!slug) {
+    list.innerHTML = '<div class="empty-state" style="padding:20px 10px"><div class="empty-state-desc">Select a project to see sessions</div></div>';
+    countEl.textContent = '';
+    return;
+  }
+
+  list.innerHTML = '<div style="padding:12px;font-size:10px;color:var(--text-dim)">Loading...</div>';
+
+  try {
+    const r = await fetch(`${API}/sessions/${encodeURIComponent(slug)}`);
+    if (!r.ok) { list.innerHTML = '<div style="padding:12px;font-size:10px;color:var(--event-error)">Failed to load</div>'; return; }
+    const sessions = await r.json();
+    countEl.textContent = sessions.length;
+
+    if (!sessions.length) {
+      list.innerHTML = '<div class="empty-state" style="padding:20px 10px"><div class="empty-state-desc">No sessions found</div></div>';
+      return;
+    }
+
+    list.innerHTML = sessions.map(s => {
+      const time = s.modified_at ? new Date(s.modified_at * 1000).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:false}) : '';
+      const date = s.modified_at ? new Date(s.modified_at * 1000).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '';
+      const fmtK = n => n >= 1000 ? (n/1000).toFixed(0) + 'k' : n.toString();
+      const ctxPct = (s.context_size / 200000 * 100).toFixed(0);
+      const ctxColor = ctxPct > 80 ? 'var(--event-error)' : ctxPct > 50 ? 'var(--phase-exploring)' : 'var(--phase-ready)';
+      const modelShort = (s.model || '?').replace('claude-', '').replace('-4-6', '').replace('-4-5-20251001', '');
+
+      return `
+        <div class="session-file-item" id="sfi-${s.id}" onclick="loadSession('${escapeHtml(slug)}','${s.id}',${s.active})">
+          <div class="session-card-title">
+            ${s.active ? '<div class="session-active-dot"></div>' : ''}
+            ${escapeHtml(s.title)}
+          </div>
+          <div class="session-card-tokens">${fmtK(s.output_tokens)} out</div>
+          <div class="session-file-meta">
+            <span>${modelShort}</span>
+            <span>${s.user_turns} turns</span>
+            <span style="color:${ctxColor}">ctx ${fmtK(s.context_size)}</span>
+            <span style="margin-left:auto">${date} ${time}</span>
+          </div>
+          <div class="ctx-meter"><div class="ctx-meter-fill" style="width:${Math.min(ctxPct,100)}%;background:${ctxColor}"></div></div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div style="padding:12px;font-size:10px;color:var(--event-error)">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function loadSession(slug, id, isActive) {
+  document.querySelectorAll('.session-file-item').forEach(el => el.classList.remove('active'));
+  const activeEl = document.getElementById(`sfi-${id}`);
+  if (activeEl) activeEl.classList.add('active');
+
+  const viewer = document.getElementById('conversation-messages');
+  const sessionIdEl = document.getElementById('conv-session-id');
+  const statsEl = document.getElementById('conv-stats');
+  const detailPanel = document.getElementById('session-detail-panel');
+
+  sessionIdEl.textContent = id.substring(0, 8) + '...';
+  viewer.innerHTML = '<div style="padding:20px;font-size:10px;color:var(--text-dim)">Loading...</div>';
+  detailPanel.style.display = 'none';
+  detailPanel.innerHTML = '';
+  statsEl.innerHTML = '';
+
+  // Load stats and conversation in parallel
+  const [statsRes, convRes] = await Promise.allSettled([
+    fetch(`${API}/sessions/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/stats`),
+    fetch(`${API}/sessions/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`)
+  ]);
+
+  // Render stats
+  if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+    const stats = await statsRes.value.json();
+    renderSessionStats(stats, detailPanel);
+    sessionIdEl.textContent = stats.title.substring(0, 40) + (stats.title.length > 40 ? '...' : '');
+  }
+
+  // Render conversation
+  if (convRes.status === 'fulfilled' && convRes.value.ok) {
+    const session = await convRes.value.json();
+    const msgs = session.messages || [];
+
+    if (!msgs.length) {
+      viewer.innerHTML = '<div class="empty-state"><div class="empty-state-desc">No messages</div></div>';
+    } else {
+      viewer.innerHTML = msgs.map(renderMessage).join('');
+      // Active sessions: scroll to bottom
+      if (isActive) {
+        setTimeout(() => viewer.scrollTop = viewer.scrollHeight, 100);
+      }
+    }
+  } else {
+    viewer.innerHTML = '<div style="padding:20px;color:var(--event-error);font-size:11px">Failed to load conversation</div>';
+  }
+}
+
+function renderSessionStats(stats, panel) {
+  const ctxPct = (stats.context_size / 200000 * 100).toFixed(0);
+  const ctxColor = ctxPct > 80 ? 'red' : ctxPct > 50 ? 'yellow' : 'green';
+  const ctxColorVar = ctxPct > 80 ? 'var(--event-error)' : ctxPct > 50 ? 'var(--phase-exploring)' : 'var(--phase-ready)';
+  const fmtK = n => n >= 1000000 ? (n/1000000).toFixed(1) + 'M' : n >= 1000 ? (n/1000).toFixed(0) + 'k' : n.toString();
+  const totalTools = Object.values(stats.tools).reduce((a, b) => a + b, 0);
+  const modelsStr = stats.models_used.map(m => m.replace('claude-', '').replace('-4-6', '').replace('-4-5-20251001', '')).join(', ');
+
+  // Suggestions
+  const suggestionsHtml = stats.suggestions.length ? `
+    <div class="suggestions-bar">
+      ${stats.suggestions.map(s => `<div class="suggestion-chip">${escapeHtml(s)}</div>`).join('')}
+    </div>
+  ` : '';
+
+  // Tool breakdown
+  const toolsSorted = Object.entries(stats.tools).sort((a, b) => b[1] - a[1]);
+  const toolsHtml = toolsSorted.map(([name, count]) =>
+    `<span class="tool-chip">${escapeHtml(name)} ${count}</span>`
+  ).join('');
+
+  // Files
+  const shortPath = p => p.split('/').slice(-2).join('/');
+  const filesReadHtml = stats.files_read.map(f => `<span class="file-chip" title="${escapeHtml(f)}">${escapeHtml(shortPath(f))}</span>`).join('');
+  const filesEditedHtml = stats.files_edited.map(f => `<span class="file-chip" title="${escapeHtml(f)}" style="border-color:var(--phase-design)">${escapeHtml(shortPath(f))}</span>`).join('');
+
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-mini">
+        <div class="stat-mini-value" style="color:${ctxColorVar}">${fmtK(stats.context_size)}</div>
+        <div class="stat-mini-label">Context</div>
+        <div class="ctx-meter" style="margin-top:3px"><div class="ctx-meter-fill" style="width:${Math.min(ctxPct,100)}%;background:${ctxColorVar}"></div></div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value">${fmtK(stats.total_output_tokens)}</div>
+        <div class="stat-mini-label">Output</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value">${stats.user_turns}</div>
+        <div class="stat-mini-label">Turns</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value">${modelsStr}</div>
+        <div class="stat-mini-label">Model</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value">${totalTools}</div>
+        <div class="stat-mini-label">Tool Calls</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value">${stats.files_read.length + stats.files_edited.length}</div>
+        <div class="stat-mini-label">Files</div>
+      </div>
+    </div>
+    ${suggestionsHtml}
+    <div class="detail-section">
+      <div class="detail-section-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span>Tools (${totalTools})</span><span>&#9654;</span>
+      </div>
+      <div class="detail-section-body">
+        <div class="tools-bar">${toolsHtml}</div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-header" onclick="this.nextElementSibling.classList.toggle('open')">
+        <span>Files Read (${stats.files_read.length}) &bull; Edited (${stats.files_edited.length})</span><span>&#9654;</span>
+      </div>
+      <div class="detail-section-body">
+        ${stats.files_edited.length ? `<div style="margin-bottom:4px;font-size:8px;color:var(--text-ghost);text-transform:uppercase;letter-spacing:0.08em">Edited</div><div class="files-list" style="margin-bottom:8px">${filesEditedHtml}</div>` : ''}
+        ${stats.files_read.length ? `<div style="margin-bottom:4px;font-size:8px;color:var(--text-ghost);text-transform:uppercase;letter-spacing:0.08em">Read</div><div class="files-list">${filesReadHtml}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderMessage(msg) {
+  const isUser = msg.role === 'user';
+  const roleLabel = `<div class="msg-role-label ${msg.role}">${msg.role}</div>`;
+
+  const usageBadge = msg.usage
+    ? `<div class="msg-usage-badge">${(msg.usage.input_tokens||0).toLocaleString()} in / ${(msg.usage.output_tokens||0).toLocaleString()} out</div>`
+    : '';
+
+  const blocks = (msg.content_blocks || []).map(b => renderBlock(b, isUser)).join('');
+
+  return `
+    <div class="msg-turn">
+      ${roleLabel}
+      ${blocks}
+      ${usageBadge}
+    </div>
+  `;
+}
+
+let _blockId = 0;
+function renderBlock(block, isUser) {
+  const id = ++_blockId;
+
+  if (block.kind === 'text') {
+    const cls = isUser ? 'block-text-user' : 'block-text-assistant';
+    const text = block.text || '';
+    // Skip empty text blocks
+    if (!text.trim()) return '';
+    return `<div class="block ${cls}">${escapeHtml(text)}</div>`;
+  }
+
+  if (block.kind === 'thinking') {
+    const preview = block.text ? block.text.substring(0, 60).replace(/\n/g, ' ') + '…' : '(encrypted)';
+    const bodyText = block.text ? escapeHtml(block.text) : '<span style="color:var(--text-ghost)">thinking content is encrypted in this session</span>';
+    return `
+      <div class="block block-thinking">
+        <div class="block-thinking-header" onclick="toggleBlock('thinking-body-${id}', this.querySelector('.block-thinking-toggle'))">
+          <span class="block-thinking-toggle">&#9654;</span>
+          <span>thinking</span>
+          <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-ghost)">${escapeHtml(preview)}</span>
+        </div>
+        <div class="block-thinking-body" id="thinking-body-${id}">${bodyText}</div>
+      </div>
+    `;
+  }
+
+  if (block.kind === 'tool_use') {
+    const toolName = block.tool_name || 'tool';
+    const inputStr = block.tool_input ? JSON.stringify(block.tool_input, null, 2) : '';
+    const preview = getToolPreview(toolName, block.tool_input);
+    return `
+      <div class="block block-tool-use">
+        <div class="block-tool-header" onclick="toggleBlock('tool-body-${id}', null)">
+          <div class="tool-name-badge">${escapeHtml(toolName)}</div>
+          <div class="tool-input-preview">${escapeHtml(preview)}</div>
+          <span style="font-size:9px;color:var(--text-ghost)">&#9654;</span>
+        </div>
+        <div class="block-tool-body" id="tool-body-${id}">
+          <pre class="tool-input-json">${escapeHtml(inputStr)}</pre>
+        </div>
+      </div>
+    `;
+  }
+
+  if (block.kind === 'tool_result') {
+    const text = block.text || '';
+    const lines = text.split('\n');
+    const preview = lines.slice(0, 1).join(' ').substring(0, 80);
+    const hasMore = lines.length > 3 || text.length > 200;
+    return `
+      <div class="block block-tool-result">
+        <div class="block-tool-result-header" onclick="toggleBlock('result-body-${id}', null)">
+          <span class="tool-result-label">result</span>
+          <span class="tool-result-preview">${escapeHtml(preview)}</span>
+          ${hasMore ? `<span style="flex-shrink:0">+${lines.length} lines</span>` : ''}
+        </div>
+        ${hasMore ? `<div class="block-tool-result-body" id="result-body-${id}">${escapeHtml(text)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  return '';
+}
+
+function getToolPreview(toolName, input) {
+  if (!input) return '';
+  // Extract the most useful single-line preview per tool type
+  if (toolName === 'Bash' || toolName === 'bash') return input.command || '';
+  if (toolName === 'Read') return input.file_path || '';
+  if (toolName === 'Edit' || toolName === 'Write') return input.file_path || '';
+  if (toolName === 'Glob') return input.pattern || '';
+  if (toolName === 'Grep') return `${input.pattern || ''} ${input.path ? `in ${input.path}` : ''}`.trim();
+  if (toolName === 'Agent') return input.description || '';
+  if (toolName === 'WebSearch' || toolName === 'WebFetch') return input.query || input.url || '';
+  // Fallback: first string value in input
+  const first = Object.values(input).find(v => typeof v === 'string');
+  return first ? first.substring(0, 80) : '';
+}
+
+function toggleBlock(bodyId, toggleEl) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const isOpen = body.classList.toggle('open');
+  if (toggleEl) toggleEl.classList.toggle('open', isOpen);
+}
+
+// ─── THEME ───
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  document.getElementById('theme-toggle').textContent = isLight ? '●' : '◐';
+  localStorage.setItem('smp-theme', isLight ? 'light' : 'dark');
+}
+
+function applyStoredTheme() {
+  const stored = localStorage.getItem('smp-theme');
+  if (stored === 'light') {
+    document.documentElement.classList.add('light');
+    document.getElementById('theme-toggle').textContent = '●';
+  }
+}
+
 // ─── START ───
+applyStoredTheme();
 init();
 </script>
 </body>

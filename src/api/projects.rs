@@ -1,4 +1,4 @@
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use crate::AppState;
 #[derive(Serialize)]
 pub struct ProjectSummary {
     pub name: String,
+    pub path: Option<String>,
     pub current_phase: Option<String>,
     pub decision_count: usize,
     pub last_ingestion: Option<String>,
@@ -17,6 +18,7 @@ pub struct ProjectSummary {
 #[derive(Deserialize)]
 pub struct CreateProjectRequest {
     pub name: String,
+    pub path: Option<String>,
 }
 
 /// GET /projects — list all projects discovered in the data directory.
@@ -76,8 +78,17 @@ pub async fn list_projects(
                     .ok()
                     .flatten();
 
+                let path: Option<String> = conn
+                    .query_row(
+                        "SELECT path FROM projects WHERE name = ?1",
+                        rusqlite::params![name],
+                        |row| row.get(0),
+                    )
+                    .ok();
+
                 ProjectSummary {
                     name,
+                    path,
                     current_phase,
                     decision_count,
                     last_ingestion,
@@ -85,6 +96,7 @@ pub async fn list_projects(
             }
             Err(_) => ProjectSummary {
                 name,
+                path: None,
                 current_phase: None,
                 decision_count: 0,
                 last_ingestion: None,
@@ -107,6 +119,20 @@ pub async fn create_project(
         return Err((StatusCode::BAD_REQUEST, "Invalid project name".to_string()));
     }
 
+    // Validate path exists and has CLAUDE.md
+    if let Some(ref path) = req.path {
+        let dir = std::path::Path::new(path);
+        if !dir.exists() {
+            return Err((StatusCode::BAD_REQUEST, format!("Directory does not exist: {path}")));
+        }
+        if !dir.join("CLAUDE.md").exists() {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                format!("No CLAUDE.md found in {path}. Projects must have a CLAUDE.md file."),
+            ));
+        }
+    }
+
     let conn = app.open_project_db(&req.name).map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e))
     })?;
@@ -115,12 +141,40 @@ pub async fn create_project(
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create project: {}", e))
     })?;
 
-    tracing::info!(project = %req.name, "Project created");
+    // Store path if provided
+    if let Some(ref path) = req.path {
+        conn.execute(
+            "UPDATE projects SET path = ?1 WHERE name = ?2",
+            rusqlite::params![path, req.name],
+        ).map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to set path: {}", e))
+        })?;
+    }
+
+    tracing::info!(project = %req.name, path = ?req.path, "Project created");
 
     Ok(Json(ProjectSummary {
         name: req.name,
+        path: req.path,
         current_phase: None,
         decision_count: 0,
         last_ingestion: None,
     }))
+}
+
+/// DELETE /projects/{name} — remove a project and its data directory.
+pub async fn delete_project(
+    State(app): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let project_dir = app.config.project_data_dir(&name);
+
+    if project_dir.exists() {
+        std::fs::remove_dir_all(&project_dir).map_err(|e| {
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to delete project data: {e}"))
+        })?;
+    }
+
+    tracing::info!(project = %name, "Project deleted");
+    Ok(StatusCode::NO_CONTENT)
 }

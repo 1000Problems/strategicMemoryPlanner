@@ -7,7 +7,7 @@ mod memory;
 mod secretary;
 
 use anyhow::{Context, Result};
-use axum::{response::IntoResponse, routing::get, routing::post, Router};
+use axum::{response::IntoResponse, routing::{delete, get, post}, Router};
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -86,6 +86,7 @@ async fn main() -> Result<()> {
         // Projects
         .route("/projects", get(api::projects::list_projects))
         .route("/projects", post(api::projects::create_project))
+        .route("/projects/{name}", delete(api::projects::delete_project))
         // Ingestion
         .route("/ingest", post(api::ingest::ingest_log))
         // Memory
@@ -94,6 +95,16 @@ async fn main() -> Result<()> {
         .route("/memory/{project}/brain", get(api::memory::get_brain))
         // Events
         .route("/events/{project}", get(events::sse::event_stream))
+        // Context tracer
+        .route("/projects/{name}/context", get(api::context::get_context))
+        .route("/pick-folder", post(api::context::pick_folder))
+        .route("/read-file", get(api::context::read_file))
+        // Sessions (Claude Code log browser)
+        .route("/sessions", get(api::sessions::list_session_projects))
+        .route("/sessions/{slug}", get(api::sessions::list_sessions))
+        .route("/sessions/{slug}/{id}", get(api::sessions::get_session))
+        .route("/sessions/{slug}/{id}/stats", get(api::sessions::get_session_stats))
+        .route("/billing", get(api::sessions::get_billing))
         // Debug
         .route("/debug/query", get(api::debug::debug_query))
         .layer(CorsLayer::permissive())
