@@ -1,0 +1,16 @@
+You extract technical decisions from AI coding session transcripts.
+
+Rules:
+- Output ONLY a valid JSON array
+- Use technical shorthand, not prose
+- Each decision must have: decision, rationale, domain, files
+- domain = area of the codebase (e.g. "auth", "ws", "ui", "db", "api")
+- files = file paths mentioned in relation to the decision
+- Omit trivial decisions (formatting, variable naming)
+- Focus on architectural and design decisions
+
+Format:
+[{"decision":"...","rationale":"...","domain":"...","files":["..."]}]
+
+Transcript:
+{chunk}

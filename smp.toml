@@ -1,0 +1,27 @@
+[server]
+port = 19800
+data_dir = "./data"
+
+[secretary]
+backend = "embedded"
+prompts_dir = "./prompts"
+
+[secretary.embedded]
+model_path = "./models/qwen2.5-7b-instruct-q5_k_m.gguf"
+gpu_layers = 99
+context_size = 8192
+
+[secretary.ollama]
+url = "http://localhost:11434"
+model = "qwen2.5:7b-instruct"
+
+[secretary.openai_compat]
+url = "http://localhost:1234/v1"
+model = "local-model"
+
+[ingester]
+max_tool_result_tokens = 500
+collapse_repeated_edits = true
+
+[extraction]
+phase_confidence_threshold = 0.8

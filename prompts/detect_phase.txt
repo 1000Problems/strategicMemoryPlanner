@@ -1,0 +1,17 @@
+Analyze this coding session transcript and determine the current project phase.
+
+Phases:
+- "exploring" = brainstorming, researching options, no decisions yet
+- "design" = making architectural decisions, choosing approaches
+- "ready" = design is complete, implementation can begin
+- "blocked" = work is stopped due to unresolved issue
+- "review" = implementation exists, reviewing/testing
+- "done" = feature is complete and verified
+
+Output ONLY valid JSON:
+{"domain":"...","phase":"...","confidence":0.0,"signal":"brief quote from transcript supporting this"}
+
+Only report if confidence > 0.7. If unclear, output: {"domain":"unknown","phase":"exploring","confidence":0.5,"signal":"unclear"}
+
+Transcript:
+{chunk}
