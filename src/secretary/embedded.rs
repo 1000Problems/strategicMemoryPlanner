@@ -88,16 +88,28 @@ fn run_inference(
     use llama_cpp_2::llama_batch::LlamaBatch;
     use llama_cpp_2::token::data_array::LlamaTokenDataArray;
 
+    tracing::debug!(prompt_bytes = prompt.len(), context_size, "run_inference: starting");
+
+    // Wrap in ChatML format for Qwen 2.5 Instruct (and other instruction-tuned models).
+    // Without the template the model treats the prompt as a conversation to continue
+    // rather than an instruction to follow, producing garbage instead of JSON.
+    let formatted = format!(
+        "<|im_start|>system\nYou are an expert technical analyst. Output only valid JSON, no prose or explanation.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+        prompt
+    );
+
     // Create a fresh context for this inference
     let ctx_params = LlamaContextParams::default()
         .with_n_ctx(std::num::NonZeroU32::new(context_size));
 
     let mut ctx = inner.model.new_context(&inner.backend, ctx_params)
         .context("Failed to create inference context")?;
+    tracing::debug!("run_inference: context created");
 
-    // Tokenize the prompt
-    let tokens = inner.model.str_to_token(prompt, llama_cpp_2::model::AddBos::Always)
+    // Tokenize — AddBos::Never since ChatML tokens serve as BOS signals
+    let tokens = inner.model.str_to_token(&formatted, llama_cpp_2::model::AddBos::Never)
         .context("Failed to tokenize prompt")?;
+    tracing::debug!(token_count = tokens.len(), "run_inference: tokenized");
 
     if tokens.len() as u32 >= context_size {
         anyhow::bail!(
@@ -108,49 +120,59 @@ fn run_inference(
     }
 
     // Feed prompt tokens
-    let mut batch = LlamaBatch::new(context_size as usize, 1);
+    let mut prompt_batch = LlamaBatch::new(tokens.len(), 1);
     let last_idx = tokens.len() - 1;
     for (i, &token) in tokens.iter().enumerate() {
-        batch.add(token, i as i32, &[0], i == last_idx)?;
+        prompt_batch.add(token, i as i32, &[0], i == last_idx)
+            .with_context(|| format!("Failed to add prompt token {} to batch", i))?;
     }
-    ctx.decode(&mut batch).context("Failed to decode prompt")?;
+    ctx.decode(&mut prompt_batch).context("Failed to decode prompt")?;
+    tracing::debug!("run_inference: prompt decoded, starting generation");
 
-    // Generate output tokens
+    // Generate output tokens — use a fresh single-token batch each step.
+    // Re-using a cleared batch leaves n_tokens == 0 in llama-cpp-2's internals.
     let max_output_tokens = 2048; // Decisions JSON shouldn't exceed this
     let mut output_tokens = Vec::new();
     let eos = inner.model.token_eos();
 
-    // Try to build GBNF grammar from JSON schema for constrained output.
-    // If grammar creation fails, fall back to unconstrained sampling.
-    // TODO: llama-cpp-2's grammar API may need version-specific handling.
     let _grammar_hint = json_schema; // Reserved for GBNF grammar integration
 
     for step in 0..max_output_tokens {
         let logits = ctx.candidates();
         let mut candidates = LlamaTokenDataArray::from_iter(logits, false);
 
-        // Sample token with seed derived from step number
-        let token = candidates.sample_token(step as u32);
+        // Greedy sampling — always pick the highest-probability token.
+        // Random-seeded sampling (sample_token(step)) hits EOS prematurely.
+        let token = candidates.sample_token_greedy();
 
         if token == eos {
+            tracing::debug!(step, "run_inference: hit EOS token");
             break;
         }
 
+        // Position of this generated token in the full sequence
+        let pos = (tokens.len() + output_tokens.len()) as i32;
         output_tokens.push(token);
 
-        // Prepare next batch
-        batch.clear();
-        batch.add(token, (tokens.len() + output_tokens.len()) as i32, &[0], true)?;
-        ctx.decode(&mut batch).context("Failed to decode token")?;
+        // Fresh batch — avoids the cleared-batch n_tokens == 0 bug
+        let mut gen_batch = LlamaBatch::new(1, 1);
+        gen_batch.add(token, pos, &[0], true)
+            .with_context(|| format!("Failed to add generated token at step {}", step))?;
+        ctx.decode(&mut gen_batch)
+            .with_context(|| format!("Failed to decode at generation step {}", step))?;
     }
 
-    // Detokenize: convert tokens back to text
-    // llama-cpp-2's token_to_piece requires a Decoder; as a simplified fallback,
-    // return a placeholder since this inference code is not yet fully integrated
-    let output = format!(
-        r#"{{"extracted": "inference stub", "tokens_generated": {}}}"#,
-        output_tokens.len()
-    );
+    tracing::debug!(generated = output_tokens.len(), "run_inference: generation complete");
+
+    // Detokenize output tokens to text
+    let mut output = String::new();
+    for &token in &output_tokens {
+        match inner.model.token_to_str(token, llama_cpp_2::model::Special::Tokenize) {
+            Ok(piece) => output.push_str(&piece),
+            Err(e) => tracing::warn!(token = token.0, error = %e, "Failed to detokenize token"),
+        }
+    }
+    tracing::debug!(output_bytes = output.len(), output_preview = %output.chars().take(200).collect::<String>(), "run_inference: detokenized");
 
     Ok(output.trim().to_string())
 }

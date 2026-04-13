@@ -48,11 +48,22 @@ pub async fn extract_decisions(
 
     let mut all_decisions = Vec::new();
 
-    for chunk in &chunks {
+    for (chunk_idx, chunk) in chunks.iter().enumerate() {
+        tracing::debug!(chunk_idx, chunk_bytes = chunk.len(), "Loading prompt for chunk");
+
         let prompt = prompts.load("extract_decisions", chunk)
             .context("Failed to load decision extraction prompt")?;
 
         let raw_output = secretary.extract(&prompt, schemas::DECISIONS).await
+            .map_err(|e| {
+                tracing::error!(
+                    error = ?e,
+                    chunk_idx,
+                    prompt_bytes = prompt.len(),
+                    "Secretary.extract() failed — full error chain above"
+                );
+                e
+            })
             .context("Secretary failed during decision extraction")?;
 
         match serde_json::from_str::<Vec<ExtractedDecision>>(&raw_output) {
