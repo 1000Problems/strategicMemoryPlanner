@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use crate::events::Event;
 use crate::ingester;
-use crate::memory::{export, hot, state};
+use crate::memory::{export, state};
 use crate::secretary::extract::{detect_phase, extract_decisions};
 use crate::AppState;
 
@@ -94,7 +94,7 @@ pub async fn ingest_log(
     let mut new_count = 0;
     for decision in &decisions {
         match state::upsert_decision(&conn, &req.project, decision) {
-            Ok((id, is_new)) => {
+            Ok((_id, is_new)) => {
                 if is_new {
                     new_count += 1;
                     app.events.emit(Event::DecisionNew {

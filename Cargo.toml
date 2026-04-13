@@ -7,7 +7,8 @@ description = "Strategic Memory Planner — local memory management daemon"
 [dependencies]
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
-tokio-stream = "0.1"
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"

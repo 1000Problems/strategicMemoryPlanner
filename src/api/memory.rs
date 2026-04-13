@@ -1,7 +1,7 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::memory::{hot, state, export};
 use crate::AppState;
