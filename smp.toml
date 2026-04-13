@@ -7,7 +7,7 @@ backend = "embedded"
 prompts_dir = "./prompts"
 
 [secretary.embedded]
-model_path = "./models/qwen2.5-7b-instruct-q5_k_m.gguf"
+model_path = "~/1000Problems/models/Qwen2.5-7B-Instruct-Q5_K_M.gguf"
 gpu_layers = 99
 context_size = 8192
 

@@ -77,12 +77,31 @@ fn default_max_tool_result_tokens() -> usize { 500 }
 fn default_true() -> bool { true }
 fn default_phase_confidence() -> f64 { 0.8 }
 
+fn expand_tilde(path: &Path) -> PathBuf {
+    let path_str = path.to_string_lossy();
+    if path_str.starts_with("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            PathBuf::from(home).join(&path_str[2..])
+        } else {
+            path.to_path_buf()
+        }
+    } else {
+        path.to_path_buf()
+    }
+}
+
 impl Config {
     pub fn load(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read config: {}", path.display()))?;
-        let config: Config = toml::from_str(&content)
+        let mut config: Config = toml::from_str(&content)
             .with_context(|| "Failed to parse config TOML")?;
+
+        // Expand tilde in model_path if using embedded backend
+        if let Some(ref mut embedded) = config.secretary.embedded {
+            embedded.model_path = expand_tilde(&embedded.model_path);
+        }
+
         Ok(config)
     }
 
