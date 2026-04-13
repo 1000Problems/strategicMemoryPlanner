@@ -14,6 +14,8 @@ pub struct Config {
 pub struct ServerConfig {
     pub port: u16,
     pub data_dir: PathBuf,
+    #[serde(default = "default_true")]
+    pub debug: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]

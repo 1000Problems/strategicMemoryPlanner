@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMP — Strategic Memory Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   SMP DASHBOARD — MISSION CONTROL
+   Industrial / utilitarian / data-dense
+   ═══════════════════════════════════════════════ */
+
+:root {
+  /* Base */
+  --bg-deep: #0a0b0e;
+  --bg-surface: #111318;
+  --bg-raised: #181a20;
+  --bg-hover: #1e2028;
+  --border: #252730;
+  --border-active: #3a3d48;
+  --text-primary: #e2e4e9;
+  --text-secondary: #8b8f9a;
+  --text-dim: #555863;
+  --text-ghost: #3a3d48;
+
+  /* Phase Colors — semantic, not decorative */
+  --phase-exploring: #d4a843;
+  --phase-design: #3db8c4;
+  --phase-ready: #4ade80;
+  --phase-blocked: #f87171;
+  --phase-review: #a78bfa;
+  --phase-done: #6b7280;
+
+  /* Event accents */
+  --event-decision: #3db8c4;
+  --event-phase: #d4a843;
+  --event-ingestion: #4ade80;
+  --event-error: #f87171;
+
+  /* UI */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+  --font-sans: 'Instrument Sans', -apple-system, sans-serif;
+  --glow-cyan: 0 0 20px rgba(61, 184, 196, 0.15);
+  --glow-amber: 0 0 20px rgba(212, 168, 67, 0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── LAYOUT ─── */
+.app {
+  display: grid;
+  grid-template-columns: 260px 1fr 340px;
+  grid-template-rows: 48px 1fr;
+  grid-template-areas:
+    "header header header"
+    "sidebar main inspector";
+  height: 100vh;
+  gap: 1px;
+  background: var(--border);
+}
+
+/* ─── HEADER ─── */
+.header {
+  grid-area: header;
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-mark {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, var(--phase-design), var(--phase-exploring));
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bg-deep);
+  font-family: var(--font-mono);
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--phase-ready);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.status-dot.offline { background: var(--event-error); animation: none; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-active);
+}
+
+.btn-primary {
+  background: var(--phase-design);
+  color: var(--bg-deep);
+  border-color: var(--phase-design);
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: #4bc8d4;
+  border-color: #4bc8d4;
+  color: var(--bg-deep);
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  grid-area: sidebar;
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-section {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.project-item {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.1s;
+}
+
+.project-item:hover { background: var(--bg-hover); }
+
+.project-item.active {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-active);
+}
+
+.project-name {
+  font-weight: 500;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-phase-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.project-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.new-project-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  margin-top: 6px;
+}
+
+.new-project-input:focus {
+  border-color: var(--phase-design);
+}
+
+.new-project-input::placeholder {
+  color: var(--text-dim);
+}
+
+/* Sessions sub-section */
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-item {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.session-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.session-status.active { background: var(--phase-ready); }
+.session-status.complete { background: var(--text-dim); }
+
+/* ─── MAIN AREA ─── */
+.main {
+  grid-area: main;
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.main-tab {
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  font-family: var(--font-mono);
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.main-tab:hover { color: var(--text-secondary); }
+
+.main-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--phase-design);
+}
+
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* ─── PIPELINE VIEW ─── */
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pipeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pipeline-stages {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.pipeline-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-dim);
+  transition: all 0.3s;
+}
+
+.pipeline-stage.active {
+  background: var(--bg-raised);
+  color: var(--phase-design);
+  box-shadow: var(--glow-cyan);
+}
+
+.pipeline-stage.done {
+  color: var(--phase-ready);
+}
+
+.pipeline-arrow {
+  color: var(--text-ghost);
+  font-size: 10px;
+  margin: 0 4px;
+}
+
+.pipeline-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  transition: border-color 0.2s;
+}
+
+.stat-card:hover { border-color: var(--border-active); }
+
+.stat-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 300;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}
+
+.stat-unit {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* ─── EVENT STREAM ─── */
+.event-stream {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+.event-stream-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  background: var(--bg-raised);
+}
+
+.event-stream-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--phase-ready);
+}
+
+.event-stream-live .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--phase-ready);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.event-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.event-item {
+  padding: 6px 12px;
+  display: grid;
+  grid-template-columns: 70px 140px 1fr;
+  gap: 8px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--bg-deep);
+  animation: event-enter 0.3s ease-out;
+  align-items: baseline;
+}
+
+@keyframes event-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+    background: rgba(61, 184, 196, 0.05);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    background: transparent;
+  }
+}
+
+.event-time {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.event-type {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.event-type-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.event-payload {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── DECISIONS VIEW ─── */
+.decisions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.domain-group {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.domain-header {
+  padding: 10px 14px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.domain-name {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.domain-count {
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--bg-deep);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.decision-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bg-deep);
+  transition: background 0.1s;
+}
+
+.decision-item:last-child { border-bottom: none; }
+.decision-item:hover { background: var(--bg-hover); }
+
+.decision-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.decision-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.decision-rationale {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+
+.decision-files {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.file-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+/* ─── HOT MEMORY VIEW ─── */
+.hot-memory {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.hot-memory-header {
+  padding: 10px 14px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hot-memory-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(212, 168, 67, 0.15);
+  color: var(--phase-exploring);
+  font-weight: 500;
+}
+
+.hot-memory-content {
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+}
+
+.hot-memory-content .line-phase { color: var(--phase-design); font-weight: 500; }
+.hot-memory-content .line-decided { color: var(--phase-ready); }
+.hot-memory-content .line-blocker { color: var(--event-error); }
+.hot-memory-content .line-open { color: var(--phase-exploring); }
+
+/* ─── BRAIN VIEW ─── */
+.brain-view {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.brain-view h1 {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.brain-view h2 {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: var(--phase-design);
+}
+
+.brain-view ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.brain-view li {
+  padding: 2px 0;
+  color: var(--text-secondary);
+}
+
+.brain-view li::before {
+  content: "→ ";
+  color: var(--text-dim);
+}
+
+/* ─── INSPECTOR (RIGHT PANEL) ─── */
+.inspector {
+  grid-area: inspector;
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.inspector-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+  flex-shrink: 0;
+}
+
+.inspector-tab {
+  padding: 8px 14px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  font-family: var(--font-mono);
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.inspector-tab:hover { color: var(--text-secondary); }
+
+.inspector-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--phase-exploring);
+}
+
+.inspector-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* SQLite Explorer */
+.sql-input-wrap {
+  margin-bottom: 12px;
+}
+
+.sql-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--phase-design);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  transition: border-color 0.15s;
+}
+
+.sql-input:focus { border-color: var(--phase-design); }
+
+.sql-table-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.sql-table-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sql-table-btn:hover {
+  border-color: var(--phase-design);
+  color: var(--phase-design);
+}
+
+.sql-results {
+  overflow-x: auto;
+}
+
+.sql-results table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.sql-results th {
+  padding: 6px 8px;
+  text-align: left;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+.sql-results td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--bg-deep);
+  color: var(--text-secondary);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sql-results tr:hover td { background: var(--bg-hover); }
+
+/* Event log in inspector */
+.event-detail {
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.event-detail-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.event-detail-type {
+  font-weight: 600;
+}
+
+.event-detail-time {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.event-detail-body {
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+/* ─── EMPTY STATES ─── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-dim);
+  gap: 8px;
+}
+
+.empty-state-icon {
+  font-size: 32px;
+  opacity: 0.3;
+  margin-bottom: 4px;
+}
+
+.empty-state-title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.empty-state-desc {
+  font-size: 11px;
+  max-width: 240px;
+}
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 400px;
+  max-width: 90vw;
+}
+
+.modal h3 {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.modal label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.modal input {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  margin-bottom: 16px;
+}
+
+.modal input:focus { border-color: var(--phase-design); }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ─── INGEST MODAL ─── */
+.ingest-progress {
+  margin-top: 12px;
+  display: none;
+}
+
+.ingest-progress.active { display: block; }
+
+.progress-bar-track {
+  height: 3px;
+  background: var(--bg-deep);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--phase-design);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+.progress-bar-fill.indeterminate {
+  width: 30%;
+  animation: progress-slide 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+
+/* ─── RESPONSIVE (collapse inspector on narrow) ─── */
+@media (max-width: 1100px) {
+  .app {
+    grid-template-columns: 220px 1fr;
+    grid-template-areas:
+      "header header"
+      "sidebar main";
+  }
+  .inspector { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ═══ HEADER ═══ -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <div class="logo-mark">SM</div>
+        Strategic Memory Planner
+      </div>
+      <div class="status-item">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">connecting...</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-item">
+        <span id="backend-name">—</span>
+      </div>
+      <button class="btn" onclick="showIngestModal()">ingest</button>
+      <button class="btn btn-primary" onclick="showNewProjectModal()">+ project</button>
+    </div>
+  </header>
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Projects</div>
+      <div class="project-list" id="project-list">
+        <div class="empty-state" id="no-projects" style="padding:20px 10px">
+          <div class="empty-state-desc">No projects yet</div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-section" id="sessions-section" style="display:none">
+      <div class="sidebar-label">Active Sessions</div>
+      <div class="session-list" id="session-list"></div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN AREA ═══ -->
+  <main class="main">
+    <div class="main-tabs">
+      <button class="main-tab active" data-tab="pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
+      <button class="main-tab" data-tab="decisions" onclick="switchMainTab('decisions')">Decisions</button>
+      <button class="main-tab" data-tab="hot" onclick="switchMainTab('hot')">Hot Memory</button>
+      <button class="main-tab" data-tab="brain" onclick="switchMainTab('brain')">Brain</button>
+    </div>
+
+    <!-- Pipeline tab -->
+    <div class="main-content" id="tab-pipeline">
+      <div class="pipeline">
+        <div class="pipeline-stages">
+          <div class="pipeline-stage" id="stage-idle">IDLE</div>
+          <div class="pipeline-arrow">&#9654;</div>
+          <div class="pipeline-stage" id="stage-parse">PARSE</div>
+          <div class="pipeline-arrow">&#9654;</div>
+          <div class="pipeline-stage" id="stage-filter">FILTER</div>
+          <div class="pipeline-arrow">&#9654;</div>
+          <div class="pipeline-stage" id="stage-extract">EXTRACT</div>
+          <div class="pipeline-arrow">&#9654;</div>
+          <div class="pipeline-stage" id="stage-store">STORE</div>
+          <div class="pipeline-arrow">&#9654;</div>
+          <div class="pipeline-stage" id="stage-done">DONE</div>
+        </div>
+
+        <div class="pipeline-stats" id="pipeline-stats">
+          <div class="stat-card">
+            <div class="stat-label">Raw Tokens</div>
+            <div class="stat-value" id="stat-raw">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Digest Tokens</div>
+            <div class="stat-value" id="stat-digest">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Compression</div>
+            <div class="stat-value" id="stat-compress">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Decisions</div>
+            <div class="stat-value" id="stat-decisions">—</div>
+          </div>
+        </div>
+
+        <div class="event-stream">
+          <div class="event-stream-header">
+            <span>Event Stream</span>
+            <div class="event-stream-live" id="sse-indicator" style="display:none">
+              <div class="dot"></div>
+              <span>SSE connected</span>
+            </div>
+          </div>
+          <div class="event-list" id="event-list">
+            <div class="empty-state" id="no-events">
+              <div class="empty-state-icon">&#9671;</div>
+              <div class="empty-state-title">No events yet</div>
+              <div class="empty-state-desc">Events will stream here when you ingest a session log</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decisions tab -->
+    <div class="main-content" id="tab-decisions" style="display:none">
+      <div class="decisions-grid" id="decisions-grid">
+        <div class="empty-state">
+          <div class="empty-state-icon">&#9673;</div>
+          <div class="empty-state-title">No decisions</div>
+          <div class="empty-state-desc">Select a project and ingest a session</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hot Memory tab -->
+    <div class="main-content" id="tab-hot" style="display:none">
+      <div class="hot-memory" id="hot-memory">
+        <div class="hot-memory-header">
+          <span style="font-size:11px;font-weight:500">Hot Memory</span>
+          <div class="hot-memory-badge" id="hot-token-count">— tokens</div>
+        </div>
+        <div class="hot-memory-content" id="hot-content">
+          <div class="empty-state">
+            <div class="empty-state-desc">No hot memory for this project</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Brain tab -->
+    <div class="main-content" id="tab-brain" style="display:none">
+      <div class="brain-view" id="brain-content">
+        <div class="empty-state">
+          <div class="empty-state-icon">&#9683;</div>
+          <div class="empty-state-title">No brain export</div>
+          <div class="empty-state-desc">Ingest a session to generate the project brain</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══ INSPECTOR ═══ -->
+  <aside class="inspector">
+    <div class="inspector-tabs">
+      <button class="inspector-tab active" data-itab="sql" onclick="switchInspectorTab('sql')">SQLite</button>
+      <button class="inspector-tab" data-itab="events" onclick="switchInspectorTab('events')">Events</button>
+    </div>
+
+    <div class="inspector-content" id="itab-sql">
+      <div class="sidebar-label" style="margin-bottom:8px">Tables</div>
+      <div class="sql-table-selector" id="sql-tables">
+        <button class="sql-table-btn" onclick="quickQuery('decisions')">decisions</button>
+        <button class="sql-table-btn" onclick="quickQuery('decision_history')">history</button>
+        <button class="sql-table-btn" onclick="quickQuery('blockers')">blockers</button>
+        <button class="sql-table-btn" onclick="quickQuery('open_questions')">questions</button>
+        <button class="sql-table-btn" onclick="quickQuery('phase_log')">phases</button>
+        <button class="sql-table-btn" onclick="quickQuery('ingestion_log')">ingestions</button>
+        <button class="sql-table-btn" onclick="quickQuery('projects')">projects</button>
+      </div>
+      <div class="sql-input-wrap">
+        <textarea class="sql-input" id="sql-input" placeholder="SELECT * FROM decisions LIMIT 20" rows="3"
+          onkeydown="if(event.ctrlKey && event.key==='Enter') runQuery()"></textarea>
+      </div>
+      <button class="btn" onclick="runQuery()" style="margin-bottom:12px;width:100%;justify-content:center">
+        Run Query &nbsp;(Ctrl+Enter)
+      </button>
+      <div class="sql-results" id="sql-results"></div>
+    </div>
+
+    <div class="inspector-content" id="itab-events" style="display:none">
+      <div id="event-detail-list">
+        <div class="empty-state" style="padding:20px">
+          <div class="empty-state-desc">Event details will appear here</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- ═══ NEW PROJECT MODAL ═══ -->
+<div class="modal-overlay" id="new-project-modal">
+  <div class="modal">
+    <h3>New Project</h3>
+    <label>Project Name</label>
+    <input type="text" id="new-project-name" placeholder="my-project" autofocus
+      onkeydown="if(event.key==='Enter') createProject()">
+    <div class="modal-actions">
+      <button class="btn" onclick="hideModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="createProject()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ INGEST MODAL ═══ -->
+<div class="modal-overlay" id="ingest-modal">
+  <div class="modal">
+    <h3>Ingest Session Log</h3>
+    <label>Project</label>
+    <input type="text" id="ingest-project" placeholder="project name" readonly>
+    <label>Source Path</label>
+    <input type="text" id="ingest-source" placeholder="/path/to/session.jsonl"
+      onkeydown="if(event.key==='Enter') runIngest()">
+    <div class="ingest-progress" id="ingest-progress">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill indeterminate" id="ingest-bar"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text-dim)" id="ingest-status">Processing...</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="hideModals()">Cancel</button>
+      <button class="btn btn-primary" id="ingest-btn" onclick="runIngest()">Ingest</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SMP Dashboard — Client Logic
+// ═══════════════════════════════════════════════
+
+const API = window.location.origin;
+let currentProject = null;
+let eventSource = null;
+let allEvents = [];
+
+// ─── INIT ───
+async function init() {
+  await checkHealth();
+  await loadProjects();
+  setInterval(checkHealth, 15000);
+}
+
+// ─── HEALTH ───
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    document.getElementById('status-dot').classList.remove('offline');
+    document.getElementById('status-text').textContent = `v${d.version}`;
+    document.getElementById('backend-name').textContent = d.secretary_backend || 'unknown';
+  } catch {
+    document.getElementById('status-dot').classList.add('offline');
+    document.getElementById('status-text').textContent = 'offline';
+    document.getElementById('backend-name').textContent = '—';
+  }
+}
+
+// ─── PROJECTS ───
+async function loadProjects() {
+  try {
+    const r = await fetch(`${API}/projects`);
+    if (!r.ok) {
+      // Fallback: if /projects doesn't exist yet, try known projects from state
+      document.getElementById('no-projects').style.display = 'flex';
+      return;
+    }
+    const projects = await r.json();
+    renderProjects(projects);
+  } catch {
+    // /projects endpoint might not exist yet — show empty state
+    document.getElementById('no-projects').style.display = 'flex';
+  }
+}
+
+function renderProjects(projects) {
+  const list = document.getElementById('project-list');
+  const noProjects = document.getElementById('no-projects');
+
+  if (!projects || projects.length === 0) {
+    noProjects.style.display = 'flex';
+    return;
+  }
+
+  noProjects.style.display = 'none';
+  list.innerHTML = projects.map(p => {
+    const phase = p.current_phase || 'unknown';
+    const phaseColor = getPhaseColor(phase);
+    return `
+      <div class="project-item ${currentProject === p.name ? 'active' : ''}"
+           onclick="selectProject('${p.name}')">
+        <div class="project-name">
+          <div class="project-phase-dot" style="background:${phaseColor}"></div>
+          ${p.name}
+        </div>
+        <div class="project-meta">${phase}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectProject(name) {
+  currentProject = name;
+  loadProjects();
+  loadProjectData();
+  connectSSE(name);
+}
+
+async function loadProjectData() {
+  if (!currentProject) return;
+  loadDecisions();
+  loadHotMemory();
+  loadBrain();
+}
+
+// ─── SSE ───
+function connectSSE(project) {
+  if (eventSource) eventSource.close();
+
+  eventSource = new EventSource(`${API}/events/${project}`);
+  const indicator = document.getElementById('sse-indicator');
+
+  eventSource.onopen = () => {
+    indicator.style.display = 'flex';
+  };
+
+  eventSource.onmessage = (e) => {
+    try {
+      const event = JSON.parse(e.data);
+      handleEvent(event);
+    } catch {
+      handleEvent({ type: 'raw', data: e.data });
+    }
+  };
+
+  eventSource.onerror = () => {
+    indicator.style.display = 'none';
+  };
+}
+
+function handleEvent(event) {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const eventType = event.type || event.event || 'unknown';
+
+  const eventObj = { time: timeStr, type: eventType, data: event, raw: JSON.stringify(event, null, 2) };
+  allEvents.unshift(eventObj);
+  if (allEvents.length > 200) allEvents.pop();
+
+  // Render in main event stream
+  renderEventToStream(eventObj);
+  renderEventToInspector(eventObj);
+
+  // Update pipeline stages based on event
+  updatePipelineFromEvent(eventType, event);
+
+  // Refresh data after state changes
+  if (['DecisionNew', 'DecisionChanged', 'PhaseChanged', 'IngestionComplete', 'StateUpdated'].includes(eventType)) {
+    setTimeout(loadProjectData, 500);
+  }
+}
+
+function renderEventToStream(evt) {
+  const list = document.getElementById('event-list');
+  const noEvents = document.getElementById('no-events');
+  if (noEvents) noEvents.style.display = 'none';
+
+  const color = getEventColor(evt.type);
+  const payload = summarizeEvent(evt.data);
+
+  const div = document.createElement('div');
+  div.className = 'event-item';
+  div.innerHTML = `
+    <div class="event-time">${evt.time}</div>
+    <div class="event-type">
+      <div class="event-type-dot" style="background:${color}"></div>
+      ${evt.type}
+    </div>
+    <div class="event-payload">${payload}</div>
+  `;
+  list.prepend(div);
+
+  // Limit rendered events
+  while (list.children.length > 100) list.removeChild(list.lastChild);
+}
+
+function renderEventToInspector(evt) {
+  const list = document.getElementById('event-detail-list');
+  if (list.querySelector('.empty-state')) list.innerHTML = '';
+
+  const color = getEventColor(evt.type);
+  const div = document.createElement('div');
+  div.className = 'event-detail';
+  div.innerHTML = `
+    <div class="event-detail-header">
+      <div class="event-detail-type" style="color:${color}">${evt.type}</div>
+      <div class="event-detail-time">${evt.time}</div>
+    </div>
+    <div class="event-detail-body">${evt.raw}</div>
+  `;
+  list.prepend(div);
+  while (list.children.length > 50) list.removeChild(list.lastChild);
+}
+
+function updatePipelineFromEvent(type, data) {
+  // Reset all
+  document.querySelectorAll('.pipeline-stage').forEach(s => s.classList.remove('active', 'done'));
+
+  if (type === 'IngestionComplete') {
+    document.querySelectorAll('.pipeline-stage').forEach(s => s.classList.add('done'));
+    // Update stats
+    if (data.stats || data.content) {
+      const stats = data.stats || data.content || {};
+      if (stats.raw_tokens) document.getElementById('stat-raw').textContent = stats.raw_tokens.toLocaleString();
+      if (stats.digest_tokens) document.getElementById('stat-digest').textContent = stats.digest_tokens.toLocaleString();
+      if (stats.compression_ratio) document.getElementById('stat-compress').textContent = (stats.compression_ratio * 100).toFixed(0) + '%';
+      if (stats.decisions_extracted !== undefined) document.getElementById('stat-decisions').textContent = stats.decisions_extracted;
+    }
+  } else if (type === 'DecisionNew' || type === 'DecisionChanged') {
+    document.getElementById('stage-extract').classList.add('active');
+    const count = document.getElementById('stat-decisions');
+    const current = parseInt(count.textContent) || 0;
+    count.textContent = current + 1;
+  } else if (type === 'PhaseChanged') {
+    document.getElementById('stage-store').classList.add('active');
+  }
+}
+
+// ─── DATA LOADING ───
+async function loadDecisions() {
+  try {
+    const r = await fetch(`${API}/memory/${currentProject}/state`);
+    if (!r.ok) return;
+    const data = await r.json();
+    renderDecisions(data.decisions || []);
+  } catch {}
+}
+
+function renderDecisions(decisions) {
+  const grid = document.getElementById('decisions-grid');
+  if (!decisions.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-state-desc">No decisions extracted yet</div></div>';
+    return;
+  }
+
+  // Group by domain
+  const groups = {};
+  decisions.forEach(d => {
+    const domain = d.domain || 'general';
+    if (!groups[domain]) groups[domain] = [];
+    groups[domain].push(d);
+  });
+
+  grid.innerHTML = Object.entries(groups).map(([domain, decs]) => `
+    <div class="domain-group">
+      <div class="domain-header">
+        <div class="domain-name">
+          <div class="project-phase-dot" style="background:${getPhaseColor('design')}"></div>
+          ${domain}
+        </div>
+        <div class="domain-count">${decs.length}</div>
+      </div>
+      ${decs.map(d => `
+        <div class="decision-item">
+          <div class="decision-text">${escapeHtml(d.decision)}</div>
+          ${d.rationale ? `<div class="decision-rationale">${escapeHtml(d.rationale)}</div>` : ''}
+          ${d.files && d.files.length ? `
+            <div class="decision-files">
+              ${(typeof d.files === 'string' ? JSON.parse(d.files) : d.files).map(f =>
+                `<span class="file-tag">${escapeHtml(f)}</span>`
+              ).join('')}
+            </div>
+          ` : ''}
+          <div class="decision-meta">
+            <span>${d.updated_at || d.created_at || ''}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+async function loadHotMemory() {
+  try {
+    const r = await fetch(`${API}/memory/${currentProject}/hot`);
+    if (!r.ok) return;
+    const text = await r.text();
+    const content = document.getElementById('hot-content');
+    content.textContent = text;
+
+    // Rough token estimate
+    const tokens = Math.ceil(text.split(/\s+/).length * 1.3);
+    document.getElementById('hot-token-count').textContent = `~${tokens} tokens`;
+  } catch {}
+}
+
+async function loadBrain() {
+  try {
+    const r = await fetch(`${API}/memory/${currentProject}/brain`);
+    if (!r.ok) return;
+    const text = await r.text();
+    document.getElementById('brain-content').innerHTML = markdownToHtml(text);
+  } catch {}
+}
+
+// ─── SQL EXPLORER ───
+function quickQuery(table) {
+  const input = document.getElementById('sql-input');
+  if (currentProject) {
+    input.value = `SELECT * FROM ${table} WHERE project = '${currentProject}' ORDER BY rowid DESC LIMIT 20`;
+  } else {
+    input.value = `SELECT * FROM ${table} ORDER BY rowid DESC LIMIT 20`;
+  }
+  runQuery();
+}
+
+async function runQuery() {
+  const sql = document.getElementById('sql-input').value.trim();
+  if (!sql) return;
+
+  const results = document.getElementById('sql-results');
+
+  try {
+    const r = await fetch(`${API}/debug/query?sql=${encodeURIComponent(sql)}`);
+    if (!r.ok) {
+      const err = await r.text();
+      results.innerHTML = `<div style="color:var(--event-error);font-size:11px;padding:8px">${escapeHtml(err)}</div>`;
+      return;
+    }
+    const data = await r.json();
+    renderQueryResults(data);
+  } catch (e) {
+    results.innerHTML = `<div style="color:var(--event-error);font-size:11px;padding:8px">Query failed: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderQueryResults(data) {
+  const results = document.getElementById('sql-results');
+
+  if (!data.rows || data.rows.length === 0) {
+    results.innerHTML = '<div style="color:var(--text-dim);font-size:11px;padding:8px">No rows returned</div>';
+    return;
+  }
+
+  const cols = data.columns || Object.keys(data.rows[0]);
+  results.innerHTML = `
+    <table>
+      <thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${data.rows.map(row => `
+          <tr>${cols.map(c => `<td title="${escapeHtml(String(row[c] ?? ''))}">${escapeHtml(String(row[c] ?? 'NULL'))}</td>`).join('')}</tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <div style="font-size:10px;color:var(--text-dim);padding:8px 0">${data.rows.length} row${data.rows.length === 1 ? '' : 's'}</div>
+  `;
+}
+
+// ─── INGESTION ───
+function showIngestModal() {
+  document.getElementById('ingest-project').value = currentProject || '';
+  document.getElementById('ingest-source').value = '';
+  document.getElementById('ingest-progress').classList.remove('active');
+  document.getElementById('ingest-btn').disabled = false;
+  document.getElementById('ingest-modal').classList.add('show');
+  setTimeout(() => document.getElementById('ingest-source').focus(), 100);
+}
+
+async function runIngest() {
+  const project = document.getElementById('ingest-project').value.trim();
+  const source = document.getElementById('ingest-source').value.trim();
+  if (!project || !source) return;
+
+  document.getElementById('ingest-btn').disabled = true;
+  document.getElementById('ingest-progress').classList.add('active');
+  document.getElementById('ingest-status').textContent = 'Parsing and filtering...';
+
+  // Activate pipeline stages sequentially
+  activateStage('stage-parse');
+  setTimeout(() => activateStage('stage-filter'), 800);
+  setTimeout(() => {
+    activateStage('stage-extract');
+    document.getElementById('ingest-status').textContent = 'Extracting decisions via local LLM...';
+  }, 1600);
+
+  try {
+    const r = await fetch(`${API}/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project, source })
+    });
+
+    if (!r.ok) {
+      const err = await r.text();
+      document.getElementById('ingest-status').textContent = `Error: ${err}`;
+      document.getElementById('ingest-btn').disabled = false;
+      return;
+    }
+
+    const data = await r.json();
+    document.getElementById('ingest-status').textContent = 'Complete!';
+    document.getElementById('ingest-bar').classList.remove('indeterminate');
+    document.getElementById('ingest-bar').style.width = '100%';
+
+    activateStage('stage-store');
+    setTimeout(() => {
+      activateStage('stage-done');
+      // Update stats from response
+      if (data.raw_tokens) document.getElementById('stat-raw').textContent = data.raw_tokens.toLocaleString();
+      if (data.digest_tokens) document.getElementById('stat-digest').textContent = data.digest_tokens.toLocaleString();
+      if (data.compression_ratio) document.getElementById('stat-compress').textContent = (data.compression_ratio * 100).toFixed(0) + '%';
+      if (data.decisions_stored !== undefined) document.getElementById('stat-decisions').textContent = data.decisions_stored;
+    }, 300);
+
+    // Auto-select the project and refresh
+    currentProject = project;
+    setTimeout(() => {
+      hideModals();
+      loadProjects();
+      loadProjectData();
+    }, 1000);
+
+  } catch (e) {
+    document.getElementById('ingest-status').textContent = `Failed: ${e.message}`;
+    document.getElementById('ingest-btn').disabled = false;
+  }
+}
+
+function activateStage(id) {
+  document.querySelectorAll('.pipeline-stage').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  // Mark previous stages as done
+  const stages = ['stage-idle', 'stage-parse', 'stage-filter', 'stage-extract', 'stage-store', 'stage-done'];
+  const idx = stages.indexOf(id);
+  stages.slice(0, idx).forEach(s => {
+    document.getElementById(s)?.classList.add('done');
+    document.getElementById(s)?.classList.remove('active');
+  });
+}
+
+// ─── NEW PROJECT ───
+function showNewProjectModal() {
+  document.getElementById('new-project-name').value = '';
+  document.getElementById('new-project-modal').classList.add('show');
+  setTimeout(() => document.getElementById('new-project-name').focus(), 100);
+}
+
+async function createProject() {
+  const name = document.getElementById('new-project-name').value.trim();
+  if (!name) return;
+
+  try {
+    await fetch(`${API}/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+  } catch {}
+
+  hideModals();
+  currentProject = name;
+  loadProjects();
+  connectSSE(name);
+}
+
+// ─── UI HELPERS ───
+function switchMainTab(tab) {
+  document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.main-tab[data-tab="${tab}"]`).classList.add('active');
+  ['pipeline', 'decisions', 'hot', 'brain'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? '' : 'none';
+  });
+}
+
+function switchInspectorTab(tab) {
+  document.querySelectorAll('.inspector-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.inspector-tab[data-itab="${tab}"]`).classList.add('active');
+  ['sql', 'events'].forEach(t => {
+    document.getElementById(`itab-${t}`).style.display = t === tab ? '' : 'none';
+  });
+}
+
+function hideModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
+}
+
+// Close modals on escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') hideModals();
+});
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => {
+    if (e.target === m) hideModals();
+  });
+});
+
+function getPhaseColor(phase) {
+  const map = {
+    exploring: 'var(--phase-exploring)',
+    design: 'var(--phase-design)',
+    ready: 'var(--phase-ready)',
+    blocked: 'var(--phase-blocked)',
+    review: 'var(--phase-review)',
+    done: 'var(--phase-done)',
+  };
+  return map[phase] || 'var(--text-dim)';
+}
+
+function getEventColor(type) {
+  const map = {
+    DecisionNew: 'var(--event-decision)',
+    DecisionChanged: 'var(--event-decision)',
+    PhaseChanged: 'var(--event-phase)',
+    IngestionComplete: 'var(--event-ingestion)',
+    StateUpdated: 'var(--event-ingestion)',
+    error: 'var(--event-error)',
+  };
+  return map[type] || 'var(--text-dim)';
+}
+
+function summarizeEvent(data) {
+  if (data.content) {
+    const c = data.content;
+    if (c.decision) return c.decision;
+    if (c.new_phase) return `${c.domain || '?'}: ${c.old_phase || '?'} → ${c.new_phase}`;
+    if (c.stats) return `${c.stats.decisions_extracted || 0} decisions, ${c.stats.compression_ratio ? (c.stats.compression_ratio * 100).toFixed(0) : '?'}% compression`;
+  }
+  return JSON.stringify(data).substring(0, 80);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function markdownToHtml(md) {
+  return md
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code style="background:var(--bg-deep);padding:1px 4px;border-radius:3px;font-size:11px">$1</code>');
+}
+
+// ─── START ───
+init();
+</script>
+</body>
+</html>

@@ -51,6 +51,15 @@ pub fn parse_jsonl(content: &str) -> Result<Vec<DigestMessage>> {
             Ok(entry) => {
                 if let Some(msg) = convert_entry(entry) {
                     messages.push(msg);
+                } else {
+                    // convert_entry returned None — could be the Claude Code JSONL format where
+                    // {"type":"assistant","message":{"content":[blocks]}} has nested block arrays
+                    // that extract_text_content misses. Fall through to generic extractor.
+                    if let Ok(value) = serde_json::from_str::<Value>(line) {
+                        if let Some(msgs) = try_extract_from_value(&value) {
+                            messages.extend(msgs);
+                        }
+                    }
                 }
             }
             Err(e) => {
@@ -272,10 +281,26 @@ fn extract_text_content(content: &Value, message: Option<&Value>) -> String {
         }
     }
 
-    // Nested message object
+    // Nested message object (Claude Code JSONL: {type:"user"/"assistant", message:{content:...}})
     if let Some(msg) = message {
+        // String content (user messages)
         if let Some(s) = msg.get("content").and_then(|c| c.as_str()) {
             return s.to_string();
+        }
+        // Block array content (assistant messages: [{type:"text",text:"..."},{type:"tool_use",...}])
+        if let Some(blocks) = msg.get("content").and_then(|c| c.as_array()) {
+            let texts: Vec<String> = blocks.iter()
+                .filter_map(|block| {
+                    match block.get("type").and_then(|t| t.as_str()) {
+                        Some("text") => block.get("text").and_then(|t| t.as_str()).map(String::from),
+                        Some("thinking") => None,
+                        _ => None,
+                    }
+                })
+                .collect();
+            if !texts.is_empty() {
+                return texts.join("\n");
+            }
         }
     }
 

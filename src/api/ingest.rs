@@ -33,8 +33,8 @@ pub struct IngestResult {
     pub raw_tokens: usize,
     pub digest_tokens: usize,
     pub compression_ratio: f64,
-    pub decisions_extracted: usize,
-    pub phase_detected: Option<String>,
+    pub decisions_stored: usize,
+    pub phase: Option<String>,
 }
 
 /// POST /ingest — ingest a session log and extract meaning.
@@ -178,7 +178,7 @@ pub async fn ingest_log(
         raw_tokens: digest.raw_token_estimate,
         digest_tokens: digest.token_estimate,
         compression_ratio: digest.compression_ratio,
-        decisions_extracted: decisions.len(),
-        phase_detected: phase_str,
+        decisions_stored: decisions.len(),
+        phase: phase_str,
     }))
 }

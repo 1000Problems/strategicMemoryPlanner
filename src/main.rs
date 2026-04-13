@@ -7,7 +7,7 @@ mod memory;
 mod secretary;
 
 use anyhow::{Context, Result};
-use axum::{routing::get, routing::post, Router};
+use axum::{response::IntoResponse, routing::get, routing::post, Router};
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -33,6 +33,10 @@ impl AppState {
         let db_path = self.config.project_db_path(project);
         db::open_db(&db_path)
     }
+}
+
+async fn serve_dashboard() -> impl IntoResponse {
+    axum::response::Html(include_str!("../static/dashboard.html"))
 }
 
 #[tokio::main]
@@ -75,8 +79,13 @@ async fn main() -> Result<()> {
 
     // Build router
     let app = Router::new()
+        // Dashboard
+        .route("/", get(serve_dashboard))
         // System
         .route("/health", get(api::system::health))
+        // Projects
+        .route("/projects", get(api::projects::list_projects))
+        .route("/projects", post(api::projects::create_project))
         // Ingestion
         .route("/ingest", post(api::ingest::ingest_log))
         // Memory
@@ -85,6 +94,8 @@ async fn main() -> Result<()> {
         .route("/memory/{project}/brain", get(api::memory::get_brain))
         // Events
         .route("/events/{project}", get(events::sse::event_stream))
+        // Debug
+        .route("/debug/query", get(api::debug::debug_query))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
