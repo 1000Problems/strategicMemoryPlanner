@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -e
+
+pkill -f "smp smp.toml" 2>/dev/null || true
+touch src/main.rs
+cargo build --release
+RUST_LOG=smp=info ./target/release/smp smp.toml &
+sleep 1
+curl -s http://localhost:19800/health | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'SMP {d[\"version\"]} ({d[\"secretary_backend\"]}) — ready at http://localhost:19800')"
