@@ -1409,6 +1409,101 @@ html, body {
   color: var(--text-dim);
 }
 
+/* ─── DIAGRAMS TAB ─── */
+.diagrams-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.diagrams-list {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--bg-surface);
+}
+
+.diagrams-detail {
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg-deep);
+}
+
+.diagram-card {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.diagram-card:hover { background: var(--bg-hover); }
+.diagram-card.active { background: var(--bg-hover); border-left: 2px solid var(--event-decision); }
+
+.diagram-card-title {
+  font-size: 11px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.diagram-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-ghost);
+}
+
+.diagram-type-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.diagram-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.diagram-detail-title {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.diagram-detail-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.diagram-detail-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.diagram-pre {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre;
+  overflow-x: auto;
+}
+
 .conversation-messages {
   flex: 1;
   overflow-y: auto;
@@ -1963,6 +2058,7 @@ html, body {
       <button class="main-tab" data-tab="sessions" onclick="switchMainTab('sessions')">Sessions</button>
       <button class="main-tab" data-tab="pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
       <button class="main-tab" data-tab="decisions" onclick="switchMainTab('decisions')">Decisions</button>
+      <button class="main-tab" data-tab="diagrams" onclick="switchMainTab('diagrams')">Diagrams</button>
       <button class="main-tab" data-tab="hot" onclick="switchMainTab('hot')">Hot Memory</button>
       <button class="main-tab" data-tab="brain" onclick="switchMainTab('brain')">Brain</button>
     </div>
@@ -2086,6 +2182,24 @@ html, body {
           <div class="empty-state-icon">&#9673;</div>
           <div class="empty-state-title">No decisions</div>
           <div class="empty-state-desc">Select a project and ingest a session</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diagrams tab -->
+    <div class="main-content" id="tab-diagrams" style="display:none">
+      <div class="diagrams-layout">
+        <div class="diagrams-list" id="diagrams-list">
+          <div class="empty-state" style="padding:20px 10px">
+            <div class="empty-state-desc">Select a project and ingest a session with mermaid blocks</div>
+          </div>
+        </div>
+        <div class="diagrams-detail" id="diagrams-detail">
+          <div class="empty-state">
+            <div class="empty-state-icon">&#9671;</div>
+            <div class="empty-state-title">No diagram selected</div>
+            <div class="empty-state-desc">Pick a diagram from the list</div>
+          </div>
         </div>
       </div>
     </div>
@@ -2333,6 +2447,7 @@ async function archiveProject(name) {
 async function loadProjectData() {
   if (!currentProject) return;
   loadDecisions();
+  loadDiagramsTab();
   loadHotMemory();
   loadBrain();
   loadIngestionHistory();
@@ -2561,6 +2676,115 @@ async function loadBrain() {
   } catch {}
 }
 
+// ─── DIAGRAMS ───
+let currentDiagrams = [];
+let currentDiagramId = null;
+
+const DIAGRAM_TYPE_COLORS = {
+  flowchart: 'var(--event-decision)',
+  graph: 'var(--event-decision)',
+  sequencediagram: 'var(--phase-exploring)',
+  erdiagram: 'var(--phase-review)',
+  gantt: 'var(--phase-design)',
+  pie: 'var(--phase-ready)',
+  gitgraph: 'var(--phase-done)',
+  mindmap: 'var(--event-ingestion)',
+  timeline: 'var(--event-ingestion)',
+};
+
+function diagramTypeColor(type) {
+  return DIAGRAM_TYPE_COLORS[type.toLowerCase()] || 'var(--text-dim)';
+}
+
+async function loadDiagramsTab() {
+  if (!currentProject) return;
+  try {
+    const r = await fetch(`${API}/mermaid/${encodeURIComponent(currentProject)}`);
+    if (!r.ok) return;
+    currentDiagrams = await r.json();
+    renderDiagramList();
+  } catch {}
+}
+
+function renderDiagramList() {
+  const list = document.getElementById('diagrams-list');
+  if (!currentDiagrams.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:20px 10px"><div class="empty-state-desc">No mermaid diagrams found.<br>Ingest a session that contains ```mermaid blocks.</div></div>';
+    return;
+  }
+  list.innerHTML = currentDiagrams.map(d => {
+    const color = diagramTypeColor(d.diagram_type);
+    const title = d.title || d.diagram_type;
+    const date = d.created_at ? d.created_at.substring(0, 10) : '';
+    const isActive = d.id === currentDiagramId;
+    return `
+      <div class="diagram-card${isActive ? ' active' : ''}" id="dc-${d.id}" onclick="selectDiagram('${d.id}')">
+        <div class="diagram-card-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+        <div class="diagram-card-meta">
+          <span class="diagram-type-badge" style="background:${color}22;color:${color}">${escapeHtml(d.diagram_type)}</span>
+          <span>${date}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectDiagram(id) {
+  currentDiagramId = id;
+  document.querySelectorAll('.diagram-card').forEach(el => el.classList.remove('active'));
+  const card = document.getElementById(`dc-${id}`);
+  if (card) card.classList.add('active');
+
+  const diagram = currentDiagrams.find(d => d.id === id);
+  if (!diagram) return;
+
+  const detail = document.getElementById('diagrams-detail');
+  const color = diagramTypeColor(diagram.diagram_type);
+  const title = diagram.title || diagram.diagram_type;
+  const sessionShort = diagram.source_session
+    ? diagram.source_session.split('/').pop().replace('.jsonl', '').substring(0, 12) + '...'
+    : '—';
+
+  detail.innerHTML = `
+    <div class="diagram-detail-header">
+      <div>
+        <div class="diagram-detail-title">${escapeHtml(title)}</div>
+        <span class="diagram-type-badge" style="background:${color}22;color:${color};margin-top:4px;display:inline-block">${escapeHtml(diagram.diagram_type)}</span>
+      </div>
+      <div class="diagram-detail-actions">
+        <button class="btn" style="font-size:10px;padding:3px 9px" onclick="copyDiagram('${id}')">copy</button>
+        <button class="btn" style="font-size:10px;padding:3px 9px;color:var(--event-error)" onclick="deleteDiagram('${id}')">delete</button>
+      </div>
+    </div>
+    <div class="diagram-detail-meta">
+      session: ${escapeHtml(sessionShort)} &nbsp;·&nbsp; stored: ${escapeHtml(diagram.created_at ? diagram.created_at.substring(0, 16).replace('T', ' ') : '—')}
+    </div>
+    <pre class="diagram-pre" id="diagram-content-${id}">${escapeHtml(diagram.content)}</pre>
+  `;
+}
+
+async function copyDiagram(id) {
+  const diagram = currentDiagrams.find(d => d.id === id);
+  if (!diagram) return;
+  try {
+    await navigator.clipboard.writeText(diagram.content);
+    const btn = document.querySelector(`#diagrams-detail .btn`);
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓ copied'; setTimeout(() => btn.textContent = orig, 1500); }
+  } catch {}
+}
+
+async function deleteDiagram(id) {
+  if (!currentProject) return;
+  try {
+    await fetch(`${API}/mermaid/${encodeURIComponent(currentProject)}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (currentDiagramId === id) {
+      currentDiagramId = null;
+      document.getElementById('diagrams-detail').innerHTML = '<div class="empty-state"><div class="empty-state-desc">Diagram deleted</div></div>';
+    }
+    await loadDiagramsTab();
+  } catch {}
+}
+
 // ─── SQL EXPLORER ───
 function quickQuery(table) {
   const input = document.getElementById('sql-input');
@@ -2746,7 +2970,7 @@ async function createProject() {
 function switchMainTab(tab) {
   document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`.main-tab[data-tab="${tab}"]`).classList.add('active');
-  ['context', 'pipeline', 'sessions', 'decisions', 'hot', 'brain'].forEach(t => {
+  ['context', 'pipeline', 'sessions', 'decisions', 'diagrams', 'hot', 'brain'].forEach(t => {
     const el = document.getElementById(`tab-${t}`);
     if (t === 'sessions') {
       el.style.display = t === tab ? 'block' : 'none';
@@ -2756,6 +2980,7 @@ function switchMainTab(tab) {
   });
   if (tab === 'sessions') loadSessionsTab();
   if (tab === 'context') loadContext();
+  if (tab === 'diagrams') loadDiagramsTab();
 }
 
 function switchInspectorTab(tab) {

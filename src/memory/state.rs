@@ -2,6 +2,7 @@ use anyhow::Result;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 
+use crate::ingester::mermaid::ExtractedDiagram;
 use crate::secretary::extract::ExtractedDecision;
 
 /// A decision stored in the state database.
@@ -203,6 +204,85 @@ pub fn log_ingestion(
         "INSERT INTO ingestion_log (id, project, source_path, status)
          VALUES (?1, ?2, ?3, ?4)",
         params![id, project, source_path, status],
+    )?;
+    Ok(())
+}
+
+// ─── Mermaid Diagrams ─────────────────────────────────────────────────────────
+
+/// A mermaid diagram stored in the state database.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct StoredDiagram {
+    pub id: String,
+    pub project: String,
+    pub title: Option<String>,
+    pub diagram_type: String,
+    pub content: String,
+    pub fingerprint: String,
+    pub source_session: Option<String>,
+    pub version: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// Insert a diagram if its fingerprint doesn't exist yet.
+/// Returns true if new, false if already stored (idempotent re-ingestion).
+pub fn upsert_mermaid(
+    conn: &Connection,
+    project: &str,
+    diagram: &ExtractedDiagram,
+    source_session: Option<&str>,
+) -> Result<bool> {
+    let id = uuid::Uuid::new_v4().to_string();
+    let rows = conn.execute(
+        "INSERT OR IGNORE INTO mermaid_diagrams
+         (id, project, title, diagram_type, content, fingerprint, source_session)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            id,
+            project,
+            diagram.title,
+            diagram.diagram_type,
+            diagram.content,
+            diagram.fingerprint,
+            source_session,
+        ],
+    )?;
+    Ok(rows > 0)
+}
+
+/// Get all mermaid diagrams for a project, newest first.
+pub fn get_mermaid_diagrams(conn: &Connection, project: &str) -> Result<Vec<StoredDiagram>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, project, title, diagram_type, content, fingerprint,
+                source_session, version, created_at, updated_at
+         FROM mermaid_diagrams WHERE project = ?1
+         ORDER BY created_at DESC",
+    )?;
+
+    let rows = stmt.query_map(params![project], |row| {
+        Ok(StoredDiagram {
+            id: row.get(0)?,
+            project: row.get(1)?,
+            title: row.get(2)?,
+            diagram_type: row.get(3)?,
+            content: row.get(4)?,
+            fingerprint: row.get(5)?,
+            source_session: row.get(6)?,
+            version: row.get(7)?,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+        })
+    })?;
+
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+/// Delete a mermaid diagram by id.
+pub fn delete_mermaid(conn: &Connection, project: &str, id: &str) -> Result<()> {
+    conn.execute(
+        "DELETE FROM mermaid_diagrams WHERE id = ?1 AND project = ?2",
+        params![id, project],
     )?;
     Ok(())
 }

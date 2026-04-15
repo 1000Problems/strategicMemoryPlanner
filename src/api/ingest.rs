@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use crate::events::Event;
 use crate::ingester;
 use crate::memory::{export, state};
+use crate::ingester::mermaid;
 use crate::secretary::extract::{detect_phase, extract_decisions};
 use crate::AppState;
 
@@ -34,6 +35,7 @@ pub struct IngestResult {
     pub digest_tokens: usize,
     pub compression_ratio: f64,
     pub decisions_stored: usize,
+    pub diagrams_extracted: usize,
     pub phase: Option<String>,
 }
 
@@ -77,6 +79,29 @@ pub async fn ingest_log(
         compression = format!("{:.1}x", digest.compression_ratio),
         "Ingestion complete, starting extraction"
     );
+
+    // Phase 1.5: Extract mermaid diagrams (pure Rust, non-fatal)
+    let raw_content = std::fs::read_to_string(&source_path).unwrap_or_default();
+    let mermaid_blocks = mermaid::extract_mermaid(&raw_content);
+    let mut diagrams_extracted = 0;
+    for diagram in &mermaid_blocks {
+        match state::upsert_mermaid(&conn, &req.project, diagram, Some(&req.source)) {
+            Ok(true) => {
+                diagrams_extracted += 1;
+                // Write .mmd file alongside the DB record
+                let mmd_dir = app.config.server.data_dir.join(&req.project).join("mermaid");
+                if std::fs::create_dir_all(&mmd_dir).is_ok() {
+                    let fname = format!("{}.mmd", &diagram.fingerprint[..16]);
+                    let _ = std::fs::write(mmd_dir.join(fname), &diagram.content);
+                }
+            }
+            Ok(false) => {} // already stored
+            Err(e) => tracing::warn!(error = %e, "Failed to store mermaid diagram, skipping"),
+        }
+    }
+    if !mermaid_blocks.is_empty() {
+        tracing::info!(found = mermaid_blocks.len(), new = diagrams_extracted, "Mermaid extraction done");
+    }
 
     // Phase 2: Extract decisions via Secretary
     let decisions = extract_decisions(
@@ -162,6 +187,7 @@ pub async fn ingest_log(
         raw_tokens: digest.raw_token_estimate,
         digest_tokens: digest.token_estimate,
         decisions_extracted: decisions.len(),
+        diagrams_extracted,
     });
 
     tracing::info!(
@@ -179,6 +205,7 @@ pub async fn ingest_log(
         digest_tokens: digest.token_estimate,
         compression_ratio: digest.compression_ratio,
         decisions_stored: decisions.len(),
+        diagrams_extracted,
         phase: phase_str,
     }))
 }

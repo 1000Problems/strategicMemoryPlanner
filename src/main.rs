@@ -99,6 +99,9 @@ async fn main() -> Result<()> {
         .route("/projects/{name}/context", get(api::context::get_context))
         .route("/pick-folder", post(api::context::pick_folder))
         .route("/read-file", get(api::context::read_file))
+        // Mermaid diagrams
+        .route("/mermaid/{project}", get(api::mermaid::list_diagrams))
+        .route("/mermaid/{project}/{id}", delete(api::mermaid::delete_diagram))
         // Sessions (Claude Code log browser)
         .route("/sessions", get(api::sessions::list_session_projects))
         .route("/sessions/{slug}", get(api::sessions::list_sessions))

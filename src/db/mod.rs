@@ -4,6 +4,7 @@ use std::path::Path;
 
 const MIGRATION_001: &str = include_str!("migrations/001_initial.sql");
 const MIGRATION_002: &str = include_str!("migrations/002_project_path.sql");
+const MIGRATION_003: &str = include_str!("migrations/003_mermaid_diagrams.sql");
 
 /// Open (or create) the SQLite database for a project and run migrations.
 pub fn open_db(path: &Path) -> Result<Connection> {
@@ -55,6 +56,18 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             .context("Failed to run migration 002")?;
         conn.execute("INSERT INTO _migrations (id) VALUES (2)", [])?;
         tracing::info!("Applied migration 002_project_path");
+    }
+
+    let applied_003: bool = conn
+        .prepare("SELECT COUNT(*) FROM _migrations WHERE id = 3")?
+        .query_row([], |row| row.get::<_, i64>(0))
+        .map(|count| count > 0)?;
+
+    if !applied_003 {
+        conn.execute_batch(MIGRATION_003)
+            .context("Failed to run migration 003")?;
+        conn.execute("INSERT INTO _migrations (id) VALUES (3)", [])?;
+        tracing::info!("Applied migration 003_mermaid_diagrams");
     }
 
     Ok(())

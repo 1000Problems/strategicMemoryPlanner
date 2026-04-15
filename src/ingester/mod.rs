@@ -1,5 +1,6 @@
-pub mod parser;
 pub mod filter;
+pub mod mermaid;
+pub mod parser;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};

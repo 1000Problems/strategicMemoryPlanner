@@ -36,6 +36,7 @@ pub enum Event {
         raw_tokens: usize,
         digest_tokens: usize,
         decisions_extracted: usize,
+        diagrams_extracted: usize,
     },
 }
 
