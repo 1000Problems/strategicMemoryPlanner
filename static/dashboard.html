@@ -2059,6 +2059,10 @@ html, body {
           <div class="conversation-viewer">
             <div class="conversation-header">
               <div class="conversation-session-id" id="conv-session-id">no session selected</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div id="ingest-session-result" style="display:none;font-size:10px;color:var(--event-ingestion)"></div>
+                <button class="btn" id="ingest-session-btn" onclick="ingestCurrentSession()" style="display:none;font-size:10px;padding:3px 9px" title="Ingest this session into SMP memory">ingest</button>
+              </div>
               <div class="conversation-stats" id="conv-stats"></div>
             </div>
             <!-- Stats + suggestions panel -->
@@ -2408,7 +2412,7 @@ function handleEvent(event) {
   updatePipelineFromEvent(eventType, event);
 
   // Refresh data after state changes
-  if (['DecisionNew', 'DecisionChanged', 'PhaseChanged', 'IngestionComplete', 'StateUpdated'].includes(eventType)) {
+  if (['decision.new', 'decision.changed', 'phase.changed', 'ingestion.complete', 'state.updated'].includes(eventType)) {
     setTimeout(loadProjectData, 500);
   }
 }
@@ -2459,22 +2463,23 @@ function updatePipelineFromEvent(type, data) {
   // Reset all
   document.querySelectorAll('.pipeline-stage').forEach(s => s.classList.remove('active', 'done'));
 
-  if (type === 'IngestionComplete') {
+  if (type === 'ingestion.complete') {
     document.querySelectorAll('.pipeline-stage').forEach(s => s.classList.add('done'));
-    // Update stats
-    if (data.stats || data.content) {
-      const stats = data.stats || data.content || {};
-      if (stats.raw_tokens) document.getElementById('stat-raw').textContent = stats.raw_tokens.toLocaleString();
-      if (stats.digest_tokens) document.getElementById('stat-digest').textContent = stats.digest_tokens.toLocaleString();
-      if (stats.compression_ratio) document.getElementById('stat-compress').textContent = (stats.compression_ratio * 100).toFixed(0) + '%';
-      if (stats.decisions_extracted !== undefined) document.getElementById('stat-decisions').textContent = stats.decisions_extracted;
+    // payload is in data.data (serde tag+content wrapping)
+    const stats = data.data || {};
+    if (stats.raw_tokens) document.getElementById('stat-raw').textContent = stats.raw_tokens.toLocaleString();
+    if (stats.digest_tokens) document.getElementById('stat-digest').textContent = stats.digest_tokens.toLocaleString();
+    if (stats.raw_tokens && stats.digest_tokens) {
+      const ratio = (stats.digest_tokens / stats.raw_tokens * 100).toFixed(0);
+      document.getElementById('stat-compress').textContent = ratio + '%';
     }
-  } else if (type === 'DecisionNew' || type === 'DecisionChanged') {
+    if (stats.decisions_extracted !== undefined) document.getElementById('stat-decisions').textContent = stats.decisions_extracted;
+  } else if (type === 'decision.new' || type === 'decision.changed') {
     document.getElementById('stage-extract').classList.add('active');
     const count = document.getElementById('stat-decisions');
     const current = parseInt(count.textContent) || 0;
     count.textContent = current + 1;
-  } else if (type === 'PhaseChanged') {
+  } else if (type === 'phase.changed') {
     document.getElementById('stage-store').classList.add('active');
   }
 }
@@ -3067,6 +3072,7 @@ async function loadFileContent(el, id) {
 // ─── SESSIONS ───
 let sessionsSlugCache = null;
 let currentSessionSlug = null;
+let currentSessionSourcePath = null;
 
 async function loadSessionsTab() {
   loadBilling();
@@ -3179,6 +3185,13 @@ async function loadSession(slug, id, isActive) {
   const sessionIdEl = document.getElementById('conv-session-id');
   const statsEl = document.getElementById('conv-stats');
   const detailPanel = document.getElementById('session-detail-panel');
+  const ingestBtn = document.getElementById('ingest-session-btn');
+  const ingestResult = document.getElementById('ingest-session-result');
+
+  currentSessionSourcePath = null;
+  ingestBtn.style.display = 'none';
+  ingestResult.style.display = 'none';
+  ingestResult.textContent = '';
 
   sessionIdEl.textContent = id.substring(0, 8) + '...';
   viewer.innerHTML = '<div style="padding:20px;font-size:10px;color:var(--text-dim)">Loading...</div>';
@@ -3204,6 +3217,12 @@ async function loadSession(slug, id, isActive) {
     const session = await convRes.value.json();
     const msgs = session.messages || [];
 
+    // Store source path and show ingest button if we have a project
+    if (session.source_path && currentProject) {
+      currentSessionSourcePath = session.source_path;
+      ingestBtn.style.display = '';
+    }
+
     if (!msgs.length) {
       viewer.innerHTML = '<div class="empty-state"><div class="empty-state-desc">No messages</div></div>';
     } else {
@@ -3215,6 +3234,41 @@ async function loadSession(slug, id, isActive) {
     }
   } else {
     viewer.innerHTML = '<div style="padding:20px;color:var(--event-error);font-size:11px">Failed to load conversation</div>';
+  }
+}
+
+async function ingestCurrentSession() {
+  if (!currentSessionSourcePath || !currentProject) return;
+  const btn = document.getElementById('ingest-session-btn');
+  const result = document.getElementById('ingest-session-result');
+
+  btn.disabled = true;
+  btn.textContent = '⟳ ingesting…';
+  result.style.display = 'none';
+  result.textContent = '';
+
+  try {
+    const r = await fetch(`${API}/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project: currentProject, source: currentSessionSourcePath })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || r.statusText);
+
+    const ratio = data.compression_ratio ? data.compression_ratio.toFixed(1) : '?';
+    const decisions = data.decisions_stored ?? 0;
+    result.style.color = 'var(--event-ingestion)';
+    result.textContent = `✓ ${decisions} decisions · ${ratio}x compression`;
+    result.style.display = '';
+    btn.textContent = 'ingest';
+  } catch (e) {
+    result.style.color = 'var(--event-error)';
+    result.textContent = `✗ ${e.message}`;
+    result.style.display = '';
+    btn.textContent = 'ingest';
+  } finally {
+    btn.disabled = false;
   }
 }
 

@@ -83,6 +83,7 @@ pub struct DailyUsage {
 #[derive(Serialize)]
 pub struct ParsedSession {
     pub session_id: String,
+    pub source_path: String,
     pub messages: Vec<ParsedMessage>,
 }
 
@@ -281,6 +282,7 @@ pub async fn get_session(
 
     Ok(Json(ParsedSession {
         session_id: id,
+        source_path: file_path.to_string_lossy().to_string(),
         messages,
     }))
 }
