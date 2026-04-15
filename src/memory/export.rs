@@ -7,7 +7,7 @@ use super::state;
 /// Generate and write the project_brain.md file.
 /// This is the human-readable view of the state memory.
 pub fn export_brain(conn: &Connection, project: &str, data_dir: &Path) -> Result<String> {
-    let decisions = state::get_decisions(conn, project)?;
+    let decisions = state::get_decisions(conn, project, None)?;
     let blockers = state::get_active_blockers(conn, project)?;
     let questions = state::get_open_questions(conn, project)?;
     let phase = state::get_current_phase(conn, project)?;

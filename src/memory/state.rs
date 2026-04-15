@@ -14,6 +14,7 @@ pub struct StoredDecision {
     pub decision: String,
     pub rationale: String,
     pub files: Vec<String>,
+    pub source_session: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -33,6 +34,7 @@ pub fn upsert_decision(
     conn: &Connection,
     project: &str,
     decision: &ExtractedDecision,
+    source_session: Option<&str>,
 ) -> Result<(String, bool)> {
     let id = uuid::Uuid::new_v4().to_string();
     let files_json = serde_json::to_string(&decision.files)?;
@@ -71,13 +73,14 @@ pub fn upsert_decision(
         // Update the existing record
         conn.execute(
             "UPDATE decisions SET decision = ?1, rationale = ?2, files = ?3,
-             alternatives_rejected = ?4, updated_at = datetime('now')
-             WHERE id = ?5",
+             alternatives_rejected = ?4, source_session = ?5, updated_at = datetime('now')
+             WHERE id = ?6",
             params![
                 decision.decision,
                 decision.rationale,
                 files_json,
                 alts_json,
+                source_session,
                 existing_id,
             ],
         )?;
@@ -91,8 +94,8 @@ pub fn upsert_decision(
     } else {
         // Insert new decision
         conn.execute(
-            "INSERT INTO decisions (id, project, domain, decision, rationale, files, alternatives_rejected)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO decisions (id, project, domain, decision, rationale, files, alternatives_rejected, source_session)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
                 id,
                 project,
@@ -101,6 +104,7 @@ pub fn upsert_decision(
                 decision.rationale,
                 files_json,
                 alts_json,
+                source_session,
             ],
         )?;
 
@@ -110,14 +114,9 @@ pub fn upsert_decision(
     }
 }
 
-/// Get all active decisions for a project.
-pub fn get_decisions(conn: &Connection, project: &str) -> Result<Vec<StoredDecision>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, project, domain, decision, rationale, files, created_at, updated_at
-         FROM decisions WHERE project = ?1 ORDER BY domain, updated_at DESC"
-    )?;
-
-    let rows = stmt.query_map(params![project], |row| {
+/// Get decisions for a project, optionally filtered by source session.
+pub fn get_decisions(conn: &Connection, project: &str, source_session: Option<&str>) -> Result<Vec<StoredDecision>> {
+    let map_row = |row: &rusqlite::Row| {
         let files_str: String = row.get(5)?;
         Ok(StoredDecision {
             id: row.get(0)?,
@@ -126,13 +125,28 @@ pub fn get_decisions(conn: &Connection, project: &str) -> Result<Vec<StoredDecis
             decision: row.get(3)?,
             rationale: row.get(4)?,
             files: serde_json::from_str(&files_str).unwrap_or_default(),
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            source_session: row.get(6)?,
+            created_at: row.get(7)?,
+            updated_at: row.get(8)?,
         })
-    })?;
+    };
 
-    let decisions: Vec<StoredDecision> = rows.filter_map(|r| r.ok()).collect();
-    Ok(decisions)
+    if let Some(sess) = source_session {
+        let mut stmt = conn.prepare(
+            "SELECT id, project, domain, decision, rationale, files, source_session, created_at, updated_at
+             FROM decisions WHERE project = ?1 AND source_session = ?2
+             ORDER BY domain, updated_at DESC"
+        )?;
+        let rows: Vec<StoredDecision> = stmt.query_map(params![project, sess], map_row)?.filter_map(|r| r.ok()).collect();
+        Ok(rows)
+    } else {
+        let mut stmt = conn.prepare(
+            "SELECT id, project, domain, decision, rationale, files, source_session, created_at, updated_at
+             FROM decisions WHERE project = ?1 ORDER BY domain, updated_at DESC"
+        )?;
+        let rows: Vec<StoredDecision> = stmt.query_map(params![project], map_row)?.filter_map(|r| r.ok()).collect();
+        Ok(rows)
+    }
 }
 
 /// Get active blockers for a project.
@@ -251,16 +265,9 @@ pub fn upsert_mermaid(
     Ok(rows > 0)
 }
 
-/// Get all mermaid diagrams for a project, newest first.
-pub fn get_mermaid_diagrams(conn: &Connection, project: &str) -> Result<Vec<StoredDiagram>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, project, title, diagram_type, content, fingerprint,
-                source_session, version, created_at, updated_at
-         FROM mermaid_diagrams WHERE project = ?1
-         ORDER BY created_at DESC",
-    )?;
-
-    let rows = stmt.query_map(params![project], |row| {
+/// Get mermaid diagrams for a project, optionally filtered by source session.
+pub fn get_mermaid_diagrams(conn: &Connection, project: &str, source_session: Option<&str>) -> Result<Vec<StoredDiagram>> {
+    let map_row = |row: &rusqlite::Row| {
         Ok(StoredDiagram {
             id: row.get(0)?,
             project: row.get(1)?,
@@ -273,9 +280,27 @@ pub fn get_mermaid_diagrams(conn: &Connection, project: &str) -> Result<Vec<Stor
             created_at: row.get(8)?,
             updated_at: row.get(9)?,
         })
-    })?;
+    };
 
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    if let Some(sess) = source_session {
+        let mut stmt = conn.prepare(
+            "SELECT id, project, title, diagram_type, content, fingerprint,
+                    source_session, version, created_at, updated_at
+             FROM mermaid_diagrams WHERE project = ?1 AND source_session = ?2
+             ORDER BY created_at DESC",
+        )?;
+        let rows: Vec<StoredDiagram> = stmt.query_map(params![project, sess], map_row)?.filter_map(|r| r.ok()).collect();
+        Ok(rows)
+    } else {
+        let mut stmt = conn.prepare(
+            "SELECT id, project, title, diagram_type, content, fingerprint,
+                    source_session, version, created_at, updated_at
+             FROM mermaid_diagrams WHERE project = ?1
+             ORDER BY created_at DESC",
+        )?;
+        let rows: Vec<StoredDiagram> = stmt.query_map(params![project], map_row)?.filter_map(|r| r.ok()).collect();
+        Ok(rows)
+    }
 }
 
 /// Delete a mermaid diagram by id.

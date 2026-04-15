@@ -1,10 +1,15 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::memory::{hot, state, export};
 use crate::AppState;
+
+#[derive(Deserialize, Default)]
+pub struct StateQuery {
+    pub source_session: Option<String>,
+}
 
 /// GET /memory/{project}/hot
 pub async fn get_hot_memory(
@@ -20,16 +25,17 @@ pub async fn get_hot_memory(
     })
 }
 
-/// GET /memory/{project}/state
+/// GET /memory/{project}/state?source_session=...
 pub async fn get_state(
     State(app): State<AppState>,
     Path(project): Path<String>,
+    Query(query): Query<StateQuery>,
 ) -> Result<Json<StateResponse>, (StatusCode, String)> {
     let conn = app.open_project_db(&project).map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e))
     })?;
 
-    let decisions = state::get_decisions(&conn, &project).map_err(|e| {
+    let decisions = state::get_decisions(&conn, &project, query.source_session.as_deref()).map_err(|e| {
         (StatusCode::INTERNAL_SERVER_ERROR, format!("Query error: {}", e))
     })?;
     let blockers = state::get_active_blockers(&conn, &project).map_err(|e| {

@@ -15,16 +15,17 @@ pub struct ExtractedDiagram {
 /// Runs on the original file content before any filtering — works on JSONL
 /// text so it searches for the fenced blocks embedded in JSON string values.
 pub fn extract_mermaid(raw_text: &str) -> Vec<ExtractedDiagram> {
-    // Match ```mermaid ... ``` with any surrounding whitespace/newlines.
-    // The regex looks inside JSON string escaping too (\\n becomes \n in match).
-    let re = Regex::new(r"```mermaid\s*\n([\s\S]*?)\n\s*```").unwrap();
+    // JSONL files store all content on a single line with \n as the two-char
+    // escape sequence. Plain text/markdown uses actual newlines.
+    // (?:\\n|\n) matches either: literal \n escape sequence OR actual newline.
+    let re = Regex::new(r"```mermaid(?:\\n|\n)([\s\S]*?)(?:\\n|\n)```").unwrap();
 
     let mut results = Vec::new();
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     for cap in re.captures_iter(raw_text) {
         let raw_content = cap[1].to_string();
-        // Unescape JSON \\n sequences that appear when mermaid is inside a JSON string
+        // Unescape JSON \n sequences → actual newlines, then trim
         let content = raw_content
             .replace("\\n", "\n")
             .replace("\\t", "\t")

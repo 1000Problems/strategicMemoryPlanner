@@ -442,6 +442,21 @@ html, body {
 
 .main-tab:hover { color: var(--text-secondary); }
 
+.main-tab-divider {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-ghost);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-left: 1px solid var(--border);
+  margin-left: 4px;
+  cursor: default;
+  font-family: var(--font-mono);
+}
+
 .main-tab.active {
   color: var(--text-primary);
   border-bottom-color: var(--phase-design);
@@ -2059,6 +2074,7 @@ html, body {
       <button class="main-tab" data-tab="pipeline" onclick="switchMainTab('pipeline')">Pipeline</button>
       <button class="main-tab" data-tab="decisions" onclick="switchMainTab('decisions')">Decisions</button>
       <button class="main-tab" data-tab="diagrams" onclick="switchMainTab('diagrams')">Diagrams</button>
+      <span class="main-tab-divider">project-wide</span>
       <button class="main-tab" data-tab="hot" onclick="switchMainTab('hot')">Hot Memory</button>
       <button class="main-tab" data-tab="brain" onclick="switchMainTab('brain')">Brain</button>
     </div>
@@ -2177,6 +2193,10 @@ html, body {
 
     <!-- Decisions tab -->
     <div class="main-content" id="tab-decisions" style="display:none">
+      <div style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-surface);display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <span style="font-size:10px;color:var(--text-dim)">Showing:</span>
+        <div id="decisions-filter-badge"></div>
+      </div>
       <div class="decisions-grid" id="decisions-grid">
         <div class="empty-state">
           <div class="empty-state-icon">&#9673;</div>
@@ -2188,7 +2208,11 @@ html, body {
 
     <!-- Diagrams tab -->
     <div class="main-content" id="tab-diagrams" style="display:none">
-      <div class="diagrams-layout">
+      <div style="padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg-surface);display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <span style="font-size:10px;color:var(--text-dim)">Showing:</span>
+        <div id="diagrams-filter-badge"></div>
+      </div>
+      <div class="diagrams-layout" style="height:calc(100% - 37px)">
         <div class="diagrams-list" id="diagrams-list">
           <div class="empty-state" style="padding:20px 10px">
             <div class="empty-state-desc">Select a project and ingest a session with mermaid blocks</div>
@@ -2601,10 +2625,15 @@ function updatePipelineFromEvent(type, data) {
 
 // ─── DATA LOADING ───
 async function loadDecisions() {
+  if (!currentProject) return;
   try {
-    const r = await fetch(`${API}/memory/${currentProject}/state`);
+    const params = currentSessionSourcePath
+      ? `?source_session=${encodeURIComponent(currentSessionSourcePath)}`
+      : '';
+    const r = await fetch(`${API}/memory/${encodeURIComponent(currentProject)}/state${params}`);
     if (!r.ok) return;
     const data = await r.json();
+    renderSessionFilterBadge('decisions-filter-badge');
     renderDecisions(data.decisions || []);
   } catch {}
 }
@@ -2676,6 +2705,27 @@ async function loadBrain() {
   } catch {}
 }
 
+function renderSessionFilterBadge(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  if (currentSessionSourcePath) {
+    const filename = currentSessionSourcePath.split('/').pop().replace('.jsonl', '');
+    const short = filename.length > 20 ? filename.substring(0, 20) + '…' : filename;
+    el.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--event-decision);background:var(--event-decision)18;padding:3px 8px;border-radius:3px;border:1px solid var(--event-decision)44">
+      ⬡ session: ${escapeHtml(short)}
+      <button onclick="clearSessionFilter()" style="background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:10px;padding:0;line-height:1" title="Show all sessions">✕</button>
+    </span>`;
+  } else {
+    el.innerHTML = `<span style="font-size:10px;color:var(--text-ghost)">all sessions</span>`;
+  }
+}
+
+function clearSessionFilter() {
+  currentSessionSourcePath = null;
+  loadDecisions();
+  loadDiagramsTab();
+}
+
 // ─── DIAGRAMS ───
 let currentDiagrams = [];
 let currentDiagramId = null;
@@ -2699,9 +2749,13 @@ function diagramTypeColor(type) {
 async function loadDiagramsTab() {
   if (!currentProject) return;
   try {
-    const r = await fetch(`${API}/mermaid/${encodeURIComponent(currentProject)}`);
+    const params = currentSessionSourcePath
+      ? `?source_session=${encodeURIComponent(currentSessionSourcePath)}`
+      : '';
+    const r = await fetch(`${API}/mermaid/${encodeURIComponent(currentProject)}${params}`);
     if (!r.ok) return;
     currentDiagrams = await r.json();
+    renderSessionFilterBadge('diagrams-filter-badge');
     renderDiagramList();
   } catch {}
 }

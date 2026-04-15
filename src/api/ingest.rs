@@ -118,7 +118,7 @@ pub async fn ingest_log(
     // Store decisions
     let mut new_count = 0;
     for decision in &decisions {
-        match state::upsert_decision(&conn, &req.project, decision) {
+        match state::upsert_decision(&conn, &req.project, decision, Some(&req.source)) {
             Ok((_id, is_new)) => {
                 if is_new {
                     new_count += 1;

@@ -6,7 +6,7 @@ use super::state;
 /// Generate hot memory for a project — the <500 token snapshot
 /// that consumers inject into their sessions.
 pub fn generate_hot_memory(conn: &Connection, project: &str) -> Result<String> {
-    let decisions = state::get_decisions(conn, project)?;
+    let decisions = state::get_decisions(conn, project, None)?;
     let blockers = state::get_active_blockers(conn, project)?;
     let questions = state::get_open_questions(conn, project)?;
     let phase = state::get_current_phase(conn, project)?;
